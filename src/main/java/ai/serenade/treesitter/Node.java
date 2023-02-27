@@ -1,5 +1,7 @@
 package ai.serenade.treesitter;
 
+import java.nio.charset.StandardCharsets;
+
 public class Node {
   private int context0;
   private int context1;
@@ -41,4 +43,10 @@ public class Node {
   public TreeCursor walk() {
     return new TreeCursor(TreeSitter.treeCursorNew(this));
   }
+  
+  public Node getChildByFieldName(String fieldName) {
+	  byte[] bytes = fieldName.getBytes();
+	  return TreeSitter.nodeChildByFieldName(this, bytes, bytes.length);
+  }
+    
 }

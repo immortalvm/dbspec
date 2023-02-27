@@ -271,6 +271,14 @@ JNIEXPORT jlong JNICALL Java_ai_serenade_treesitter_Languages_yaml
 JNIEXPORT jlong JNICALL Java_ai_serenade_treesitter_Languages_wasm
   (JNIEnv *, jclass);
 
+/*
+ * Class:     ai_serenade_treesitter_Languages
+ * Method:    dbspec
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_ai_serenade_treesitter_Languages_dbspec
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

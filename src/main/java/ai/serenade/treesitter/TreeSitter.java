@@ -43,4 +43,7 @@ public class TreeSitter {
   public static native void treeDelete(long tree);
 
   public static native Node treeRootNode(long tree);
+ 
+  public static native Node nodeChildByFieldName(Node node, byte[] field_name, int length);
+
 }

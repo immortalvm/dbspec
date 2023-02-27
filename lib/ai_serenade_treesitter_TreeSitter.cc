@@ -109,12 +109,12 @@ jobject _marshalTreeCursorNode(JNIEnv* env, TreeCursorNode node) {
 JNIEXPORT jobject JNICALL Java_ai_serenade_treesitter_TreeSitter_nodeChild(
     JNIEnv* env, jclass self, jobject node, jint child) {
   return _marshalNode(
-      env, ts_node_child(_unmarshalNode(env, node), (uint32_t)child));
+      env, ts_node_named_child(_unmarshalNode(env, node), (uint32_t)child));
 }
 
 JNIEXPORT jint JNICALL Java_ai_serenade_treesitter_TreeSitter_nodeChildCount(
     JNIEnv* env, jclass self, jobject node) {
-  return (jint)ts_node_child_count(_unmarshalNode(env, node));
+  return (jint)ts_node_named_child_count(_unmarshalNode(env, node));
 }
 
 JNIEXPORT jboolean JNICALL Java_ai_serenade_treesitter_TreeSitter_nodeHasError(
@@ -240,4 +240,12 @@ JNIEXPORT void JNICALL Java_ai_serenade_treesitter_TreeSitter_treeDelete(
 JNIEXPORT jobject JNICALL Java_ai_serenade_treesitter_TreeSitter_treeRootNode(
     JNIEnv* env, jclass self, jlong tree) {
   return _marshalNode(env, ts_tree_root_node((TSTree*)tree));
+}
+
+JNIEXPORT jobject JNICALL Java_ai_serenade_treesitter_TreeSitter_nodeChildByFieldName(
+    JNIEnv* env, jclass self, jobject node, jbyteArray field_name_bytes, jint length) {
+  jbyte* field_name = env->GetByteArrayElements(field_name_bytes, NULL);
+  jobject result = _marshalNode(env, ts_node_child_by_field_name(_unmarshalNode(env, node), reinterpret_cast<const char*>(field_name), length));
+  env->ReleaseByteArrayElements(field_name_bytes, field_name, JNI_ABORT);
+  return result;
 }

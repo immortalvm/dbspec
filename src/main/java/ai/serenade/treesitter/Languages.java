@@ -67,4 +67,7 @@ public class Languages {
   public static native long yaml();
 
   public static native long wasm();
+  
+  public static native long dbspec();
+
 }

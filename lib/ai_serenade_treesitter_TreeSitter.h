@@ -175,6 +175,9 @@ JNIEXPORT void JNICALL Java_ai_serenade_treesitter_TreeSitter_treeDelete
 JNIEXPORT jobject JNICALL Java_ai_serenade_treesitter_TreeSitter_treeRootNode
   (JNIEnv *, jclass, jlong);
 
+JNIEXPORT jobject JNICALL Java_ai_serenade_treesitter_TreeSitter_nodeChildByFieldName(
+    JNIEnv* env, jclass self, jobject node, jbyteArray field_name_bytes, jint length);
+    
 #ifdef __cplusplus
 }
 #endif
