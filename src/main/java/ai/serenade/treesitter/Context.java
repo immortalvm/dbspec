@@ -1,39 +1,49 @@
 package ai.serenade.treesitter;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 public class Context {
-	String name;
-	Object value;
-	Context next;
+	Map<String,Object> bindings;
+	Context base;
 	
-	public Context(String n, Context c) {
-		name = n;
-		value = null;
-		next = c;
+	public Context() {
+		this.bindings = new HashMap<String,Object>();
+		this.base = null;
 	}
 	
-	public boolean setValue(String n, Object v, Context c) {
-		Context cc = find(n, c);
-		if (cc != null) {
-			cc.value = v;
-			return true;
+	public Context(Context base) {
+		this.bindings = new HashMap<String,Object>();
+		this.base = base;
+	}
+	
+	public void setValue(String name, Object value) {
+		Context ctx = findContext(name);
+		if (ctx != null) {
+			ctx.bindings.put(name, value);
 		} else {
-			return false;
+			bindings.put(name, value);
 		}
 	}
 
-	public Object getValue(String name, Context c) {
-		Context cc = find(name, c);
-		return cc == null ? null : cc.value;
-	}
-		
-	Context find(String n, Context c) {
-		if (n.equals(name)) {
-			return this;
-		} else if (next == null) {
-			return null;
-		} else {
-			return find(n, next);
-		}
+	public Object getValue(String name) {
+		Context ctx = findContext(name);
+		return ctx != null ? ctx.bindings.get(name) : null;
 	}
 	
+	public String toString() {
+		return bindings.entrySet().stream().map(e -> String.format("%s='%s'", e.getKey(), e.getValue())).collect(Collectors.joining(", ", "[", "]"));
+	}
+
+	Context findContext(String name) {
+		if (bindings.get(name) != null) {
+			return this;
+		} else if (base != null) {
+			return base.findContext(name);
+		} else {
+			return null;
+		}
+	}
+		
 }
