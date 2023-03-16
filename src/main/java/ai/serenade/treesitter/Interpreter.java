@@ -2,6 +2,7 @@ package ai.serenade.treesitter;
 
 import java.io.FileInputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,7 @@ public class Interpreter {
 			Parser parser = new Parser();
 			parser.setLanguage(Languages.dbspec());
 			tree = parser.parseString(source);
+			System.out.format("AST: %s\n\n", tree.getRootNode().getNodeString());
 			parser.close();
 		} catch (UnsupportedEncodingException e) {
 			System.out.println("Unsupported encoding");
@@ -62,24 +64,10 @@ public class Interpreter {
 		indent(level);
 		System.out.format("* source file\n");
 		for (Node c : n.getChildren()) {
-			if (c.getType().equals("nop")) {
-				// NOP
-			} else if (c.getType().equals("parameters")) {
+			if (c.getType().equals("parameters")) {
 				interpretParameters(c, level + 1, ctx);
-			} else if (c.getType().equals("set")) {
-				interpretSet(c, level + 1, ctx);
-			} else if (c.getType().equals("execute_using")) {
-				interpretExecuteUsing(c, level + 1, ctx);
-			} else if (c.getType().equals("execute_sql")) {
-				interpretExecuteSql(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_metadata")) {
-				interpretSiardMetadata(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_output")) {
-				interpretSiardOutput(c, level + 1, ctx);
-			} else if (c.getType().equals("for_loop")) {
-				interpretForLoop(c, level + 1, ctx);
 			} else {
-				throw new AstError();
+				interpretStatement(c, level, ctx);
 			}
 		}
 	}
@@ -98,9 +86,9 @@ public class Interpreter {
 	
 	void interpretParameter(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
 		ctx.setValue(nameString, config.getProperty(nameString));
+		Node description = n.getChildByFieldName("description");
 		String descriptionString = "";
 		if (description.getType().equals("short_description")) {
 			descriptionString = interpretShortDescription(description, level + 1);
@@ -109,20 +97,57 @@ public class Interpreter {
 		System.out.format("* parameter: %s  [%s]\n", nameString, descriptionString);
 	}
 	
+	void interpretStatement(Node n, int level, Context ctx) {
+		if (n.getType().equals("nop")) {
+			// NOP
+		} else if (n.getType().equals("set")) {
+			interpretSet(n, level + 1, ctx);
+		} else if (n.getType().equals("execute_using")) {
+			interpretExecuteUsing(n, level + 1, ctx);
+		} else if (n.getType().equals("execute_sql")) {
+			interpretExecuteSql(n, level + 1, ctx);
+		} else if (n.getType().equals("siard_metadata")) {
+			interpretSiardMetadata(n, level + 1, ctx);
+		} else if (n.getType().equals("siard_output")) {
+			interpretSiardOutput(n, level + 1, ctx);
+		} else if (n.getType().equals("for_loop")) {
+			interpretForLoop(n, level + 1, ctx);
+		} else if (n.getType().equals("set_inter")) {
+			// NOP
+		} else if (n.getType().equals("log")) {
+			interpretLog(n, level + 1, ctx);
+		} else if (n.getType().equals("assert")) {
+			interpretAssert(n, level + 1, ctx);
+		} else if (n.getType().equals("conditional")) {
+			interpretConditional(n, level + 1, ctx);
+		} else {
+			throw new AstError();
+		}
+	}
+
+	void interpretLog(Node n, int level, Context ctx) {
+		Object logValue = interpretBasicExpression(n.getChild(0), level + 1, ctx);
+		indent(level);
+		System.out.format("* Log message: '%s'\n", logValue);
+	}
+
+	void interpretAssert(Node n, int level, Context ctx) {
+		boolean comparisonValue = interpretComparison(n.getChild(0), level, ctx);
+		indent(level);
+		System.out.format("* Assertion: '%s'\n", comparisonValue);
+	}
+
 	void interpretSet(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node value = n.getChildByFieldName("value");
 		String variableName = interpretIdentifier(name, level + 1);
+		Node value = n.getChildByFieldName("value");
 		Object variableValue = null;
-		if (value.getType().equals("string")) {
-			variableValue = interpretString(value, level + 1, ctx);
-		} else if (value.getType().equals("variable_instance")) {
-			variableValue = interpretVariableInstance(value, level + 1, ctx);
-		} else if (value.getType().equals("connection")) {
-			variableValue = interpretConnection(value, level + 1, ctx);
-		} else if (value.getType().equals("query")) {
-			variableValue = interpretQuery(value, level + 1, ctx);
+		if (value.getType().equals("raw")) {
+			variableValue = interpretRaw(value, level, ctx);
 		} else {
+			variableValue = interpretExpression(value, level, ctx); 
+		}
+		if (variableValue == null) {
 			throw new AstError();
 		}
 		indent(level);
@@ -130,42 +155,63 @@ public class Interpreter {
 		ctx.setValue(variableName, variableValue);
 	}
 
+	Object interpretExpression(Node n, int level, Context ctx) {
+		Object expressionValue = null;
+		if (n.getType().equals("connection")) {
+			expressionValue = interpretConnection(n, level + 1, ctx);
+		} else if (n.getType().equals("query")) {
+			expressionValue = interpretQuery(n, level + 1, ctx);
+		} else if (n.getType().equals("script_result")) {
+			expressionValue = interpretScriptResult(n, level + 1, ctx);
+		} else {
+			expressionValue = interpretBasicExpression(n, level, ctx);
+		}
+		return expressionValue;
+	}
+
 	void interpretExecuteUsing(Node n, int level, Context ctx) {
 		Node interpreter = n.getChildByFieldName("interpreter");
-		Node script = n.getChildByFieldName("script");
-		String interpreterString;
-		if (interpreter.getType().equals("string")) {
-			interpreterString = interpretString(interpreter, level + 1, ctx);
-		} else if (interpreter.getType().equals("variable_instance")) {
-			interpreterString = interpretVariableInstance(interpreter, level + 1, ctx);
-		} else {
-			throw new AstError();
+		Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
+		if (!(interpreterString instanceof String)) {
+			throw new SemanticError("Interpreter is not a string");
 		}
+		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
 		indent(level);
-		System.out.format("* Executing using interpreter %s: '%s'\n", interpreterString, scriptString);
+		System.out.format("* Executing using interpreter '%s': '%s'\n", (String)interpreterString, scriptString);
+	}
+	
+	String interpretScriptResult(Node n, int level, Context ctx) {
+		Node interpreter = n.getChildByFieldName("interpreter");
+		Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
+		if (!(interpreterString instanceof String)) {
+			throw new SemanticError("Interpreter is not a string");
+		}
+		Node script = n.getChildByFieldName("script");
+		String scriptString = interpretRaw(script, level + 1, ctx);
+		indent(level);
+		String scriptResult = Script.getResultString((String)interpreterString, scriptString); 
+		System.out.format("* Executing using interpreter %s: '%s', result='%s'\n", (String)interpreterString, scriptString, scriptResult);
+		return scriptResult;
 	}
 
 	Connection interpretConnection(Node n, int level, Context ctx) {
-		String urlString;
 		Node url = n.getChildByFieldName("url");
-		Node properties = n.getChildByFieldName("properties");
-		if (url.getType().equals("string")) {
-			urlString = interpretString(url, level + 1, ctx);
-		} else if (url.getType().equals("variable_instance")) {
-			urlString = interpretVariableInstance(url, level + 1, ctx);
-		} else {
-			throw new AstError();
+		Object urlString = interpretBasicExpression(url, level, ctx);
+		if (!(urlString instanceof String)) {
+			throw new SemanticError("URL is not a string");
 		}
+		Node properties = n.getChildByFieldName("properties");
 		indent(level);
-		System.out.format("* connection: %s\n", urlString);
-		return new Connection(urlString, interpretKeyValuePairs(properties, level + 1, ctx));
+		System.out.format("* connection: %s\n", (String)urlString);
+		Context connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
+		return new Connection((String)urlString, connectionContext);
 	}
 	
 	void interpretExecuteSql(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
-		Node sql = n.getChildByFieldName("sql");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing sql on connection %s: '%s'\n", connectionString, sqlString);
@@ -173,8 +219,8 @@ public class Interpreter {
 	
 	ResultSet interpretQuery(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
-		Node sql = n.getChildByFieldName("sql");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing query on connection %s: '%s'\n", connectionString, sqlString);
@@ -183,48 +229,43 @@ public class Interpreter {
 
 	void interpretSiardOutput(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
-		Node name = n.getChildByFieldName("name");
-		Node file = n.getChildByFieldName("file");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
-		String fileString;
-		if (file.getType().equals("string")) {
-			fileString = interpretString(file, level + 1, ctx);
-		} else if (file.getType().equals("variable_instance")) {
-			fileString = interpretVariableInstance(file, level + 1, ctx);
-		} else {
-			throw new AstError();
+		Node file = n.getChildByFieldName("file");
+		Object fileString = interpretBasicExpression(file, level, ctx);
+		if (!(fileString instanceof String)) {
+			throw new SemanticError("Filename is not a string");
 		}
 		indent(level);
-		System.out.format("* SIARD output %s.%s to '%s'\n", connectionString, nameString, fileString);
-		
+		System.out.format("* SIARD output %s.%s to '%s'\n", connectionString, nameString, (String)fileString);
 	}
 
 	// Helper method
-	void interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx) {
+	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx) {
 		Node field = n.getChildByFieldName(fieldName);
 		if (field.getType().equals("")) {
-			// Skip non-existent SIARD field
-			return;
+			// Skip SIARD field when not provided
+			return "";
 		}
-		String fieldString;
+		Object fieldString = null;
 		if (field.getType().equals("raw")) {
-			fieldString = interpretRaw(field, level + 1, ctx);
-		} else if (field.getType().equals("string")) {
-			fieldString = interpretString(field, level + 1, ctx);
-		} else if (field.getType().equals("variable_instance")) {
-			fieldString = interpretVariableInstance(field, level + 1, ctx);
+			fieldString = interpretRaw(field, level, ctx);
 		} else {
-			throw new AstError();
+			fieldString = interpretBasicExpression(field, level, ctx);
+		}
+		if (!(fieldString instanceof String)) {
+			throw new SemanticError("Siard field " + fieldName + " is not a string");
 		}
 		indent(level);
-		System.out.format("* SIARD metadata %s: %s\n", fieldName, fieldString);
+		System.out.format("* SIARD metadata %s: %s\n", fieldName, (String)fieldString);
+		return (String)fieldString;
 	}
 	
 	void interpretSiardMetadata(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
-		Node name = n.getChildByFieldName("name");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		indent(level);
 		System.out.format("* SIARD metadata for %s.%s\n", connectionString, nameString);
@@ -238,148 +279,184 @@ public class Interpreter {
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_schema")) {
 				interpretSiardSchema(c, level + 1, ctx);
-			}
-		}
-	}
-	
-	// Helper method
-	String interpretDescriptionString(Node description, int level, boolean required, Context ctx) {
-		String descriptionString = "";
-		if (description.getType().equals("short_description")) {
-			descriptionString = interpretShortDescription(description, level);
-		} else if (description.getType().equals("raw")) {
-			descriptionString = interpretRaw(description, level, ctx);
-		} else if (description.getType().equals("string")) {
-			descriptionString = interpretString(description, level, ctx);
-		} else if (description.getType().equals("variable_instance")) {
-			descriptionString = interpretVariableInstance(description, level, ctx);
-		} else if (required) {
-			throw new AstError();
-		}
-		return descriptionString;
-	}
-	
-	void interpretSiardSchema(Node n, int level, Context ctx) {
-		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
-		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, true, ctx);
-		indent(level);
-		System.out.format("* SIARD schema: %s [%s]\n", nameString, descriptionString);
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("siard_type")) {
-				interpretSiardType(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_table")) {
-				interpretSiardTable(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_view")) {
-				interpretSiardView(c, level + 1, ctx);
-			}
+			} else if (c.getType().equals("command_declaration")) {
+				interpretCommandDeclaration(c, level + 1, ctx);
+			} 
 		}
 	}
 
+	void interpretSiardSchema(Node n, int level, Context ctx) {
+		Node name = n.getChildByFieldName("name");
+		String nameString = interpretIdentifier(name, level + 1);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString != null) {
+			indent(level);
+			System.out.format("* SIARD schema: %s [%s]\n", nameString, descriptionString);
+		} else {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			indent(level);
+			System.out.format("* SIARD schema: %s [%s]\n", nameString, descriptionString);
+			for (Node c : n.getChildren()) {
+				if (c.getType().equals("siard_type")) {
+					interpretSiardType(c, level + 1, ctx);
+				} else if (c.getType().equals("siard_table")) {
+					interpretSiardTable(c, level + 1, ctx);
+				} else if (c.getType().equals("siard_view")) {
+					interpretSiardView(c, level + 1, ctx);
+				}
+			}
+		}
+	}
+	
 	void interpretSiardType(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, true, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString == null) {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+		}
 		indent(level);
 		System.out.format("* SIARD type: %s [%s]\n", nameString, descriptionString);
 	}
 	
 	void interpretSiardTable(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, false, ctx);
-		indent(level);
-		System.out.format("* SIARD table: %s [%s]\n", nameString, descriptionString);
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("siard_column")) {
-				interpretSiardColumn(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_key")) {
-				interpretSiardKey(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_check")) {
-				interpretSiardCheck(c, level + 1, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString != null) {
+			indent(level);
+			System.out.format("* SIARD table: %s [%s]\n", nameString, descriptionString);
+		} else {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			indent(level);
+			System.out.format("* SIARD table: %s [%s]\n", nameString, descriptionString);
+			for (Node c : n.getChildren()) {
+				if (c.getType().equals("siard_column")) {
+					interpretSiardColumn(c, level + 1, ctx);
+				} else if (c.getType().equals("siard_key")) {
+					interpretSiardKey(c, level + 1, ctx);
+				} else if (c.getType().equals("siard_check")) {
+					interpretSiardCheck(c, level + 1, ctx);
+				}
 			}
 		}
 	}
 
 	void interpretSiardColumn(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, false, ctx);
-		indent(level);
-		System.out.format("* SIARD column: %s [%s]\n", nameString, descriptionString);
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("siard_field")) {
-				interpretSiardField(c, level + 1, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString != null) {
+			indent(level);
+			System.out.format("* SIARD column: %s [%s]\n", nameString, descriptionString);
+		} else {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			indent(level);
+			System.out.format("* SIARD column: %s [%s]\n", nameString, descriptionString);
+			for (Node c : n.getChildren()) {
+				if (c.getType().equals("siard_field")) {
+					interpretSiardField(c, level + 1, ctx);
+				}
 			}
 		}
 	}
 	
 	void interpretSiardField(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, true, ctx);
-		indent(level);
-		System.out.format("* SIARD field: %s [%s]\n", nameString, descriptionString);
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("siard_field")) {
-				interpretSiardField(c, level + 1, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString != null) {
+			indent(level);
+			System.out.format("* SIARD field: %s [%s]\n", nameString, descriptionString);
+		} else {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			indent(level);
+			System.out.format("* SIARD field: %s [%s]\n", nameString, descriptionString);
+			for (Node c : n.getChildren()) {
+				if (c.getType().equals("siard_field")) {
+					interpretSiardField(c, level + 1, ctx);
+				}
 			}
 		}
 	}
 	
 	void interpretSiardKey(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, true, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString == null) {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+		}
 		indent(level);
 		System.out.format("* SIARD key: %s [%s]\n", nameString, descriptionString);
 	}
 
 	void interpretSiardCheck(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, true, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString == null) {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+		}
 		indent(level);
 		System.out.format("* SIARD check: %s [%s]\n", nameString, descriptionString);
 	}
 	
 	void interpretSiardView(Node n, int level, Context ctx) {
 		Node name = n.getChildByFieldName("name");
-		Node description = n.getChildByFieldName("description");
 		String nameString = interpretIdentifier(name, level + 1);
-		String descriptionString = interpretDescriptionString(description, level, true, ctx);
-		indent(level);
-		System.out.format("* SIARD view: %s [%s]\n", nameString, descriptionString);
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("siard_column")) {
-				interpretSiardColumn(c, level + 1, ctx);
+		String descriptionString = interpretShortDescr(n, level, ctx);
+		if (descriptionString != null) {
+			indent(level);
+			System.out.format("* SIARD view: %s [%s]\n", nameString, descriptionString);
+		} else {
+			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			indent(level);
+			System.out.format("* SIARD view: %s [%s]\n", nameString, descriptionString);
+			for (Node c : n.getChildren()) {
+				if (c.getType().equals("siard_column")) {
+					interpretSiardColumn(c, level + 1, ctx);
+				}
 			}
 		}
 	}
 	
+	void interpretCommandDeclaration(Node n, int level, Context ctx) {
+		Node title = n.getChildByFieldName("title");
+		Object titleString = null;
+		if (title.getType().equals("raw")) {
+			titleString = interpretRaw(title, level, ctx);
+		} else {
+			titleString = interpretBasicExpression(title, level, ctx);
+		}
+		if (!(titleString instanceof String)) {
+			throw new SemanticError("Title is not a string");
+		}
+		indent(level);
+		System.out.format("* Command declaration: %s\n", (String)titleString);
+		Node parameters = n.getChildByFieldName("parameters");
+		interpretParameters(parameters, level + 1, ctx);
+		Node body = n.getChildByFieldName("body");
+		String bodyString = interpretRaw(body, level + 1, ctx);
+		indent(level);
+		System.out.format("'%s'\n", bodyString);
+	}
+	
 	void interpretForLoop(Node n, int level, Context ctx) {
 		Node variables = n.getChildByFieldName("variables");
-		Node resultSet = n.getChildByFieldName("result_set");
-		Node body = n.getChildByFieldName("body");
 		List<String> variablesStrings = interpretForVariables(variables, level + 1);
+		Node resultSet = n.getChildByFieldName("result_set");
 		String resultSetString = interpretIdentifier(resultSet, level + 1);
+		Node body = n.getChildByFieldName("body");
 		indent(level);
 		System.out.format("* for_loop: %s in %s\n", variablesStrings.stream().collect(Collectors.joining(", ")), resultSetString);
 		for (ResultRow row : ((ResultSet)ctx.getValue(resultSetString)).getRows()) {
-			Context newCtx = new Context(ctx);
 			int i = 0;
 			for (String variableString : variablesStrings) {
-				newCtx.setValue(variableString, row.getString(i));
+				ctx.setValue(variableString, row.getString(i));
 				i++;
 			}
-			interpretForBody(body, level + 1, newCtx);
+			interpretStatementBlock(body, level + 1, ctx);
 		}
 	}
 
@@ -395,38 +472,104 @@ public class Interpreter {
 		return variables;
 	}
 	
-	void interpretForBody(Node n, int level, Context ctx) {
-		indent(level);
-		System.out.format("* for_body\n");
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("nop")) {
-				// NOP
-			} else if (c.getType().equals("set")) {
-				interpretSet(c, level + 1, ctx);
-			} else if (c.getType().equals("execute_using")) {
-				interpretExecuteUsing(c, level + 1, ctx);
-			} else if (c.getType().equals("execute_sql")) {
-				interpretExecuteSql(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_metadata")) {
-				interpretSiardMetadata(c, level + 1, ctx);
-			} else if (c.getType().equals("siard_output")) {
-				interpretSiardOutput(c, level + 1, ctx);
-			} else if (c.getType().equals("for_loop")) {
-				interpretForLoop(c, level + 1, ctx);
-			} else {
-				throw new AstError();
+	void interpretConditional(Node n, int level, Context ctx) {
+		Node condition = n.getChildByFieldName("condition");
+		Boolean comparisonValue = interpretComparison(condition, level + 1, ctx);
+		System.out.format("* Conditional: value = '%s'\n", comparisonValue.booleanValue());
+		if (comparisonValue.booleanValue()) {
+			Node thenBlock = n.getChildByFieldName("then");
+			interpretStatementBlock(thenBlock, level + 1, ctx);
+		} else {
+			Node elseBlock = n.getChildByFieldName("else");
+			if (elseBlock != null) {
+				interpretStatementBlock(elseBlock, level + 1, ctx);
 			}
 		}
 	}
 	
-	String interpretVariableInstance(Node n, int level, Context ctx) {
-		String result = "";
+	void interpretStatementBlock(Node n, int level, Context ctx) {
+		indent(level);
+		System.out.format("* statement_block\n");
 		for (Node c : n.getChildren()) {
-			String variableName = interpretIdentifier(c, level + 1);
-			result = (String)ctx.getValue(variableName);
-			break;
+			interpretStatement(c, level, ctx);
 		}
-		return result;
+	}
+
+	Boolean interpretComparison(Node n, int level, Context ctx) {
+		Node left = n.getChildByFieldName("left");
+		Object leftValue = interpretBasicExpression(left, level + 1, ctx);
+		Node operator = n.getChildByFieldName("operator");
+		String operatorString = interpretComparisonOperator(operator, level + 1);
+		Node right = n.getChildByFieldName("right");
+		Object rightValue = interpretBasicExpression(right, level + 1, ctx);
+		if (!(leftValue instanceof BigInteger)) {
+			throw new SemanticError("Left side of comparison is not integer");
+		}
+		if (!(rightValue instanceof BigInteger)) {
+			throw new SemanticError("Left side of comparison is not integer");
+		}
+		int comparisonValue = ((BigInteger)leftValue).compareTo((BigInteger)rightValue);
+		if (operatorString.equals("==")) {
+			return comparisonValue == 0;
+		} else if (operatorString.equals("!=")) {
+			return comparisonValue != 0;
+		} else if (operatorString.equals("<")) {
+			return comparisonValue == -1;
+		} else if (operatorString.equals(">")) {
+			return comparisonValue == 1;
+		} else if (operatorString.equals("<=")) {
+			return comparisonValue < 1;
+		} else if (operatorString.equals(">=")) {
+			return comparisonValue > -1;
+		} else {
+			throw new SemanticError("Unknown comparison operator: " + operatorString);
+		}
+	}
+	
+	Object interpretBasicExpression(Node n, int level, Context ctx) {
+		if (n.getType().equals("string")) {
+			return interpretString(n, level + 1, ctx);
+		} else if (n.getType().equals("variable_instance")) {
+			Object result = interpretVariableInstance(n, level + 1, ctx); 
+			return result != null ? result : "<undefined>";
+		} else if (n.getType().equals("integer")) {
+			return interpretInteger(n, level + 1);
+		} else if (n.getType().equals("dot_expression")) {
+			return interpretDotExpression(n, level + 1, ctx);
+		} else {
+			throw new AstError();
+		}
+	}
+	
+	Object interpretVariableInstance(Node n, int level, Context ctx) {
+		Node identifier = n.getChild(0);
+		String identifierName = interpretIdentifier(identifier, level + 1);
+		return ctx.getValue(identifierName);
+	}
+	
+	Object interpretDotExpression(Node n, int level, Context ctx) {
+		Node left = n.getChildByFieldName("left");
+		Object leftValue = interpretBasicExpression(left, level + 1, ctx);
+		Node right = n.getChildByFieldName("right");
+		String rightOperator = interpretDotOperator(right, level + 1);
+		System.out.format("* Dot expression: value = '%s'.'%s'\n", leftValue, rightOperator);
+		if (leftValue instanceof String) {
+			if (rightOperator.equals("stripped")) {
+				return ((String)leftValue).trim();
+			} else if (rightOperator.equals("as_integer")) {
+				return new BigInteger((String)leftValue);
+			} else {
+				throw new SemanticError("Unsupported dot expression");
+			}
+		} else if (leftValue instanceof ResultSet) {
+			if (rightOperator.equals("size")) {
+				return ((ResultSet)leftValue).getSize();
+			} else {
+				throw new SemanticError("Unsupported dot expression");
+			}
+		} else {
+			throw new SemanticError("Illegal type in dot expression");
+		} 
 	}
 	
 	String interpretString(Node n, int level, Context ctx) {
@@ -444,21 +587,30 @@ public class Interpreter {
 		}
 		return result;
 	}
+
+	String interpretShortDescr(Node n, int level, Context ctx) {
+		Node description = n.getChildByFieldName("description");
+		return description != null ? interpretShortDescription(description, level + 1) : null;
+	}
 	
 	String interpretInterpolation(Node n, int level, Context ctx) {
-		String result = "";
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("string")) {
-				result = interpretString(c, level + 1, ctx);
-				break;
-			} else if (c.getType().equals("variable_instance")) {
-				result = interpretVariableInstance(c, level + 1, ctx);
-				break;
-			} else {
-				throw new AstError();
-			}
+		return interpretInterpolationCommon(n, level, ctx);
+	}
+	
+	String interpretInterpolation2(Node n, int level, Context ctx) {
+		return interpretInterpolationCommon(n, level, ctx);
+	}
+
+	// Helper method
+	String interpretInterpolationCommon(Node n, int level, Context ctx) {
+		Object interpolatedObject = interpretBasicExpression(n.getChild(0), level, ctx);
+		if (interpolatedObject instanceof String) {
+			return (String)interpolatedObject;
+		} else if (interpolatedObject instanceof BigInteger) {
+			return String.valueOf((BigInteger)interpolatedObject);
+		} else {
+			throw new SemanticError("Interpolation must be String or BigInteger");
 		}
-		return result;
 	}
 	
 	Context interpretKeyValuePairs(Node n, int level, Context ctx) {
@@ -475,19 +627,18 @@ public class Interpreter {
 
 	void interpretKeyValuePair(Node n, int level, Context keyValuePairs, Context ctx) {
 		Node key = n.getChildByFieldName("key");
-		Node value = n.getChildByFieldName("value");
 		String keyString = interpretIdentifier(key, level + 1);
-		String valueString;
+		Node value = n.getChildByFieldName("value");
+		Object valueString = null;
 		if (value.getType().equals("raw")) {
-			valueString = interpretRaw(value, level + 1, ctx);
-		} else if (value.getType().equals("string")) {
-			valueString = interpretString(value, level + 1, ctx);
-		} else if (value.getType().equals("variable_instance")) {
-			valueString = interpretVariableInstance(value, level + 1, ctx);
+			valueString = interpretRaw(value, level, ctx);
 		} else {
-			throw new AstError();
+			valueString = interpretBasicExpression(value, level, ctx);
 		}
-		keyValuePairs.setValue(keyString, valueString);
+		if (!(valueString instanceof String)) {
+			throw new SemanticError("Value is not a string");
+		}
+		keyValuePairs.setValue(keyString, (String)valueString);
 	}
 
 	String interpretRaw(Node n, int level, Context ctx) {
@@ -497,6 +648,8 @@ public class Interpreter {
 				result += interpretRawContent(c, level + 1);
 			} else if (c.getType().equals("interpolation")) {
 				result += interpretInterpolation(c, level + 1, ctx);
+			} else if (c.getType().equals("interpolation2")) {
+				result += interpretInterpolation2(c, level + 1, ctx);
 			} else {
 				throw new AstError();
 			}
@@ -507,28 +660,36 @@ public class Interpreter {
 	// Methods corresponding to terminal AST nodes
 	
 	String interpretIdentifier(Node n, int level) {
-		String contents = source.substring(n.getStartByte(), n.getEndByte());
-		return contents;
+		return source.substring(n.getStartByte(), n.getEndByte());
 	}
 	
 	String interpretShortDescription(Node n, int level) {
-		String contents = source.substring(n.getStartByte(), n.getEndByte());
-		return contents;
+		return source.substring(n.getStartByte(), n.getEndByte());
 	}
 	
 	String interpretEscapeSequence(Node n, int level) {
-		String contents = source.substring(n.getStartByte(), n.getEndByte());
-		return StringEscapeUtils.unescapeJava(contents);
+		return StringEscapeUtils.unescapeJava(source.substring(n.getStartByte(), n.getEndByte()));
 	}
 	
 	String interpretStringContent(Node n, int level) {
-		String contents = source.substring(n.getStartByte(), n.getEndByte());
-		return contents;
+		return source.substring(n.getStartByte(), n.getEndByte());
 	}
 	
 	String interpretRawContent(Node n, int level) {
-		String contents = source.substring(n.getStartByte(), n.getEndByte());
-		return contents;
+		return source.substring(n.getStartByte(), n.getEndByte());
+	}
+
+	String interpretComparisonOperator(Node n, int level) {
+		return source.substring(n.getStartByte(), n.getEndByte());
+	}
+
+	String interpretDotOperator(Node n, int level) {
+		return source.substring(n.getStartByte(), n.getEndByte());
+	}
+
+	BigInteger interpretInteger(Node n, int level) {
+		String content = source.substring(n.getStartByte(), n.getEndByte());
+		return new BigInteger(content);
 	}
 	
 }

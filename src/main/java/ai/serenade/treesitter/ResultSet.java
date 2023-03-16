@@ -1,5 +1,6 @@
 package ai.serenade.treesitter;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,4 +24,8 @@ public class ResultSet {
 		return rows;
 	}
 
+	public BigInteger getSize() {
+		return BigInteger.valueOf(rows.size());
+	}
+	
 }
