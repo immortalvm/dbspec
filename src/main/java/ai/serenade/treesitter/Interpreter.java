@@ -190,8 +190,8 @@ public class Interpreter {
 		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
 		indent(level);
-		String scriptResult = Script.getResultString((String)interpreterString, scriptString); 
-		System.out.format("* Executing using interpreter %s: '%s', result='%s'\n", (String)interpreterString, scriptString, scriptResult);
+		String scriptResult = Script.execute((String)interpreterString, scriptString); 
+		System.out.format("* Executing using interpreter %s: '%s'\n", (String)interpreterString, scriptString);
 		return scriptResult;
 	}
 
