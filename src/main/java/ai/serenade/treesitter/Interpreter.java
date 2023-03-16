@@ -211,20 +211,29 @@ public class Interpreter {
 	void interpretExecuteSql(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Object dbmsConnection = ctx.getValue(connectionString);
+		if (!(dbmsConnection instanceof Connection)) {
+			throw new SemanticError("Connection variable does not refer to an SQL connection");
+		}
 		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing sql on connection %s: '%s'\n", connectionString, sqlString);
+		Dbms.executeSql((Connection)dbmsConnection, sqlString);
 	}
 	
 	ResultSet interpretQuery(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Object dbmsConnection = ctx.getValue(connectionString);
+		if (!(dbmsConnection instanceof Connection)) {
+			throw new SemanticError("Connection variable does not refer to an SQL connection");
+		}
 		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing query on connection %s: '%s'\n", connectionString, sqlString);
-		return Query.getResultSet(sqlString);
+		return Dbms.executeSql((Connection)dbmsConnection, sqlString);
 	}
 
 	void interpretSiardOutput(Node n, int level, Context ctx) {
