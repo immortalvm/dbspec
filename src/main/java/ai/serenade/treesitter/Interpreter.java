@@ -449,7 +449,7 @@ public class Interpreter {
 		Node parameters = n.getChildByFieldName("parameters");
 		interpretParameters(parameters, level + 1, ctx);
 		Node body = n.getChildByFieldName("body");
-		String bodyString = interpretRaw(body, level + 1, ctx);
+		String bodyString = interpretRaw(body, level + 1, new Context(ctx, true));
 		indent(level);
 		System.out.format("'%s'\n", bodyString);
 	}

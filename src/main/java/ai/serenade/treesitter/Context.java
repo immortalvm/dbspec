@@ -5,22 +5,46 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Context {
+	boolean selfEvaluating;
 	Map<String,Object> bindings;
+	Context base;
 	
 	public Context() {
+		this.selfEvaluating = false;
 		this.bindings = new HashMap<String,Object>();
+		this.base = null;
+	}
+	
+	public Context(Context base, boolean selfEvaluate) {
+		this.selfEvaluating = selfEvaluate;
+		this.bindings = null;
+		this.base = base;
 	}
 	
 	public void setValue(String name, Object value) {
-		bindings.put(name, value);
+		if (base != null) {
+			base.setValue(name, value);
+		} else {
+			bindings.put(name, value);
+		}
 	}
 
 	public void clearValue(String name) {
-		bindings.remove(name);
+		if (base != null) {
+			base.clearValue(name);
+		} else {
+			bindings.remove(name);
+		}
 	}
 
 	public Object getValue(String name) {
-		return bindings.get(name);
+		if (selfEvaluating) {
+			return name;
+		} else if (base != null) {
+			return base.getValue(name);
+		} else {
+			return bindings.get(name);
+		}
 	}
 	
 	public String toString() {
