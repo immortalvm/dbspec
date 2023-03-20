@@ -4,6 +4,10 @@ import java.io.FileInputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.file.FileSystems;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -205,18 +209,10 @@ public class Interpreter {
 		indent(level);
 		System.out.format("* connection: %s\n", (String)urlString);
 		Context connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
-		return new Connection((String)urlString, connectionContext);
+		return Dbms.connect((String)urlString, connectionContext);
 	}
 	
 	void interpretExecuteSql(Node n, int level, Context ctx) {
-		interpretExecuteSqlCommon(n, level, ctx);
-	}
-	
-	ResultSet interpretQuery(Node n, int level, Context ctx) {
-		return interpretExecuteSqlCommon(n, level, ctx);
-	}
-
-	ResultSet interpretExecuteSqlCommon(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
 		Object dbmsConnection = ctx.getValue(connectionString);
@@ -227,7 +223,21 @@ public class Interpreter {
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing SQL on connection %s: '%s'\n", connectionString, sqlString);
-		return Dbms.executeSql((Connection)dbmsConnection, sqlString);
+		Dbms.executeSql((Connection)dbmsConnection, sqlString);
+	}
+	
+	ResultSet interpretQuery(Node n, int level, Context ctx) {
+		Node connection = n.getChildByFieldName("connection");
+		String connectionString = interpretIdentifier(connection, level + 1);
+		Object dbmsConnection = ctx.getValue(connectionString);
+		if (!(dbmsConnection instanceof Connection)) {
+			throw new SemanticError("Connection variable does not refer to an SQL connection");
+		}
+		Node sql = n.getChildByFieldName("sql");
+		String sqlString = interpretRaw(sql, level + 1, ctx);
+		indent(level);
+		System.out.format("* Executing SQL query on connection %s: '%s'\n", connectionString, sqlString);
+		return Dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
 	}
 	
 	void interpretSiardOutput(Node n, int level, Context ctx) {
@@ -452,13 +462,18 @@ public class Interpreter {
 		Node body = n.getChildByFieldName("body");
 		indent(level);
 		System.out.format("* for_loop: %s in %s\n", variablesStrings.stream().collect(Collectors.joining(", ")), resultSetString);
-		for (ResultRow row : ((ResultSet)ctx.getValue(resultSetString)).getRows()) {
-			int i = 0;
-			for (String variableString : variablesStrings) {
-				ctx.setValue(variableString, row.getString(i));
-				i++;
+		ResultSet rs = (ResultSet)(ctx.getValue(resultSetString));
+		try {
+			ResultSetMetaData rsmeta = rs.getMetaData();
+			int ncols = Math.min(variablesStrings.size(), rsmeta.getColumnCount());
+			while (rs.next()) {
+				for (int i = 0; i < ncols; i++) {
+					ctx.setValue(variablesStrings.get(i), rs.getString(i + 1));
+				}
+				interpretStatementBlock(body, level + 1, ctx);
 			}
-			interpretStatementBlock(body, level + 1, ctx);
+		} catch (SQLException e) {
+			throw new SemanticError("Error in ResultSet.");
 		}
 	}
 
@@ -565,7 +580,13 @@ public class Interpreter {
 			}
 		} else if (leftValue instanceof ResultSet) {
 			if (rightOperator.equals("size")) {
-				return ((ResultSet)leftValue).getSize();
+				ResultSet rs = (ResultSet)leftValue;
+				try {
+					rs.last();
+					return rs.getRow();					
+				} catch (SQLException e) {
+					throw new SemanticError("Error in ResultSet.");
+				}
 			} else {
 				throw new SemanticError("Unsupported dot expression");
 			}
