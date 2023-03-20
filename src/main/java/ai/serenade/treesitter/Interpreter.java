@@ -468,7 +468,12 @@ public class Interpreter {
 			int ncols = Math.min(variablesStrings.size(), rsmeta.getColumnCount());
 			while (rs.next()) {
 				for (int i = 0; i < ncols; i++) {
-					ctx.setValue(variablesStrings.get(i), rs.getString(i + 1));
+					String colValue = rs.getString(i + 1);
+					if (colValue == null) {
+						ctx.clearValue(variablesStrings.get(i));
+					} else {
+						ctx.setValue(variablesStrings.get(i), colValue);
+					}
 				}
 				interpretStatementBlock(body, level + 1, ctx);
 			}

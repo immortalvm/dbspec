@@ -15,6 +15,10 @@ public class Context {
 		bindings.put(name, value);
 	}
 
+	public void clearValue(String name) {
+		bindings.remove(name);
+	}
+
 	public Object getValue(String name) {
 		return bindings.get(name);
 	}
@@ -22,5 +26,5 @@ public class Context {
 	public String toString() {
 		return bindings.entrySet().stream().map(e -> String.format("%s='%s'", e.getKey(), e.getValue())).collect(Collectors.joining(", ", "[", "]"));
 	}
-		
+
 }
