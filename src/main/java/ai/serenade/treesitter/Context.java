@@ -39,7 +39,7 @@ public class Context {
 
 	public Object getValue(String name) {
 		if (selfEvaluating) {
-			return name;
+			return String.format("${%s}", name);
 		} else if (base != null) {
 			return base.getValue(name);
 		} else {
