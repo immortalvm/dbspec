@@ -13,7 +13,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
+
 
 public class Interpreter {
 	String source;
@@ -243,15 +244,13 @@ public class Interpreter {
 	void interpretSiardOutput(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
-		Node name = n.getChildByFieldName("name");
-		String nameString = interpretIdentifier(name, level + 1);
 		Node file = n.getChildByFieldName("file");
 		Object fileString = interpretBasicExpression(file, level, ctx);
 		if (!(fileString instanceof String)) {
 			throw new SemanticError("Filename is not a string");
 		}
 		indent(level);
-		System.out.format("* SIARD output %s.%s to '%s'\n", connectionString, nameString, (String)fileString);
+		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
 	}
 
 	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx) {
@@ -277,10 +276,8 @@ public class Interpreter {
 	void interpretSiardMetadata(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
-		Node name = n.getChildByFieldName("name");
-		String nameString = interpretIdentifier(name, level + 1);
 		indent(level);
-		System.out.format("* SIARD metadata for %s.%s\n", connectionString, nameString);
+		System.out.format("* SIARD metadata for %s\n", connectionString);
 		interpretSiardMetadataField("dbname", n, level + 1, ctx);
 		interpretSiardMetadataField("description", n, level + 1, ctx);
 		interpretSiardMetadataField("archiver", n, level + 1, ctx);
