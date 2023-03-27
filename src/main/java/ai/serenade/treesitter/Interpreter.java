@@ -224,7 +224,7 @@ public class Interpreter {
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing SQL on connection %s: '%s'\n", connectionString, sqlString);
-		Dbms.executeSql((Connection)dbmsConnection, sqlString);
+		Dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
 	}
 	
 	ResultSet interpretQuery(Node n, int level, Context ctx) {
@@ -244,6 +244,10 @@ public class Interpreter {
 	void interpretSiardOutput(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		Object dbmsConnection = ctx.getValue(connectionString);
+		if (!(dbmsConnection instanceof Connection)) {
+			throw new SemanticError("Connection variable does not refer to an SQL connection");
+		}
 		Node file = n.getChildByFieldName("file");
 		Object fileString = interpretBasicExpression(file, level, ctx);
 		if (!(fileString instanceof String)) {
@@ -251,6 +255,7 @@ public class Interpreter {
 		}
 		indent(level);
 		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
+		Siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
 	}
 
 	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx) {

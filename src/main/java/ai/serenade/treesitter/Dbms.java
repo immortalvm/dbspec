@@ -7,6 +7,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
+import ch.admin.bar.siard2.cmd.SiardConnection;
+
 public class Dbms {
 
 	public static Connection connect(String url, Context ctx) {
@@ -14,6 +16,8 @@ public class Dbms {
 		parameters.put("user", ctx.getValue("user"));
 		parameters.put("password", ctx.getValue("password"));
 		try {
+			// The following is needed to load the custom SIARD versions of the JDBC drivers
+			SiardConnection.getSiardConnection().loadDriver(url);		
 			Connection c = DriverManager.getConnection(url, parameters);
 			return c;
 		} catch (SQLException e) {
@@ -21,12 +25,12 @@ public class Dbms {
 		}
 	}
 
-	public static boolean executeSql(Connection connection, String sql) {
+	public static int executeSqlUpdate(Connection connection, String sql) {
 		try {
 			Statement s = connection.createStatement();
-			return s.execute(sql);
+			return s.executeUpdate(sql);
 		} catch (SQLException e) {
-			return false;
+			return 0;
 		}
 	}
 
