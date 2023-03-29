@@ -48,7 +48,8 @@ public class Node {
   
   public Node getChildByFieldName(String fieldName) {
 	  byte[] bytes = fieldName.getBytes();
-	  return TreeSitter.nodeChildByFieldName(this, bytes, bytes.length);
+	  Node child = TreeSitter.nodeChildByFieldName(this, bytes, bytes.length);
+	  return child.id != 0 ? child : null;
   }
   
   List<Node> getChildren() {

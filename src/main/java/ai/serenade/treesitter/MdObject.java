@@ -7,16 +7,17 @@ import java.util.stream.Collectors;
 public class MdObject {
 	
 	public enum MdType {
-		METADATA, DBNAME, DESCRIPTION, ARCHIVER, ARCHIVER_CONTACT, DATA_OWNER, DATA_ORIGIN_TIMESPAN, LOB_FOLDER, SCHEMA,
-		TYPE, TABLE, COLUMN, FIELD, KEY, CHECK, VIEW;
+		METADATA, INFO, SCHEMA,	TYPE, TABLE, COLUMN, FIELD, KEY, CHECK, VIEW;
 	}
 
 	MdType type;
+	String name;
 	String documentation;
 	List<MdObject> children;
 	
-	public MdObject(MdType type, String documentation) {
+	public MdObject(MdType type, String name, String documentation) {
 		this.type = type;
+		this.name = name;
 		this.documentation = documentation;
 		this.children = new ArrayList<MdObject>();
 	}
@@ -30,7 +31,8 @@ public class MdObject {
 	}
 	
 	public String toString() {
-		return String.format("(%s \"%s\" %s)", type, documentation, children.stream().map((x) -> x.toString()).collect(Collectors.joining(" "))); 
+		return String.format("(%s %s \"%s\"%S%s)", type, name, documentation.trim(), children.size() == 0 ? "" : " ",
+				children.stream().map((x) -> x.toString()).collect(Collectors.joining(" "))); 
 	}
 	
 }
