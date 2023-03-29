@@ -15,11 +15,14 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.text.StringEscapeUtils;
 
+import ai.serenade.treesitter.MdObject.MdType;
+
 
 public class Interpreter {
 	String source;
 	Tree tree;
 	Context context;
+	Context connections;
 	Properties config = new Properties();
 	final static String CONFIG_FILENAME = "dbspec.conf";
 	final static String TREE_SITTER_LIBRARY = "../iDA-DbSpec-interpreter/libjava-tree-sitter.so";
@@ -32,6 +35,7 @@ public class Interpreter {
 		try {
 			this.source = source;
 			this.context = new Context();
+			this.connections = new Context();
 			loadConfigFile();
 			Parser parser = new Parser();
 			parser.setLanguage(Languages.dbspec());
@@ -255,7 +259,9 @@ public class Interpreter {
 		}
 		indent(level);
 		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
-		Siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+		// Siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+		MdObject md = (MdObject)connections.getValue(connectionString);
+		System.out.format("* SIARD metadata: %s\n", md.toString());
 	}
 
 	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx) {
@@ -281,155 +287,178 @@ public class Interpreter {
 	void interpretSiardMetadata(Node n, int level, Context ctx) {
 		Node connection = n.getChildByFieldName("connection");
 		String connectionString = interpretIdentifier(connection, level + 1);
+		MdObject md = new MdObject(MdType.METADATA, "");
+		connections.setValue(connectionString, md);
 		indent(level);
 		System.out.format("* SIARD metadata for %s\n", connectionString);
-		interpretSiardMetadataField("dbname", n, level + 1, ctx);
-		interpretSiardMetadataField("description", n, level + 1, ctx);
-		interpretSiardMetadataField("archiver", n, level + 1, ctx);
-		interpretSiardMetadataField("archiverContact", n, level + 1, ctx);
-		interpretSiardMetadataField("dataOwner", n, level + 1, ctx);
-		interpretSiardMetadataField("dataOriginTimespan", n, level + 1, ctx);
-		interpretSiardMetadataField("lobFolder", n, level + 1, ctx);
+		md.add(new MdObject(MdType.DBNAME, interpretSiardMetadataField("dbname", n, level + 1, ctx)));
+		md.add(new MdObject(MdType.DESCRIPTION, interpretSiardMetadataField("description", n, level + 1, ctx)));
+		md.add(new MdObject(MdType.ARCHIVER, interpretSiardMetadataField("archiver", n, level + 1, ctx)));
+		md.add(new MdObject(MdType.ARCHIVER_CONTACT, interpretSiardMetadataField("archiverContact", n, level + 1, ctx)));
+		md.add(new MdObject(MdType.DATA_OWNER, interpretSiardMetadataField("dataOwner", n, level + 1, ctx)));
+		md.add(new MdObject(MdType.DATA_ORIGIN_TIMESPAN, interpretSiardMetadataField("dataOriginTimespan", n, level + 1, ctx)));
+		md.add(new MdObject(MdType.LOB_FOLDER, interpretSiardMetadataField("lobFolder", n, level + 1, ctx)));
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_schema")) {
-				interpretSiardSchema(c, level + 1, ctx);
+				interpretSiardSchema(c, level + 1, ctx, md);
 			} else if (c.getType().equals("command_declaration")) {
 				interpretCommandDeclaration(c, level + 1, ctx);
 			} 
 		}
 	}
 
-	void interpretSiardSchema(Node n, int level, Context ctx) {
+	void interpretSiardSchema(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
+		MdObject md = new MdObject(MdType.SCHEMA, descriptionString);
+		parent.add(md);
 		if (descriptionString != null) {
 			indent(level);
 			System.out.format("* SIARD schema: %s [%s]\n", nameString, descriptionString);
 		} else {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			md.setDocumentation(descriptionString);
 			indent(level);
 			System.out.format("* SIARD schema: %s [%s]\n", nameString, descriptionString);
 			for (Node c : n.getChildren()) {
 				if (c.getType().equals("siard_type")) {
-					interpretSiardType(c, level + 1, ctx);
+					interpretSiardType(c, level + 1, ctx, md);
 				} else if (c.getType().equals("siard_table")) {
-					interpretSiardTable(c, level + 1, ctx);
+					interpretSiardTable(c, level + 1, ctx, md);
 				} else if (c.getType().equals("siard_view")) {
-					interpretSiardView(c, level + 1, ctx);
+					interpretSiardView(c, level + 1, ctx, md);
 				}
 			}
 		}
 	}
 	
-	void interpretSiardType(Node n, int level, Context ctx) {
+	void interpretSiardType(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
 		if (descriptionString == null) {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
 		}
+		MdObject md = new MdObject(MdType.TYPE, descriptionString);
+		parent.add(md);
 		indent(level);
 		System.out.format("* SIARD type: %s [%s]\n", nameString, descriptionString);
 	}
 	
-	void interpretSiardTable(Node n, int level, Context ctx) {
+	void interpretSiardTable(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
+		MdObject md = new MdObject(MdType.TABLE, descriptionString);
+		parent.add(md);
 		if (descriptionString != null) {
 			indent(level);
 			System.out.format("* SIARD table: %s [%s]\n", nameString, descriptionString);
 		} else {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			md.setDocumentation(descriptionString);
 			indent(level);
 			System.out.format("* SIARD table: %s [%s]\n", nameString, descriptionString);
 			for (Node c : n.getChildren()) {
 				if (c.getType().equals("siard_column")) {
-					interpretSiardColumn(c, level + 1, ctx);
+					interpretSiardColumn(c, level + 1, ctx, md);
 				} else if (c.getType().equals("siard_key")) {
-					interpretSiardKey(c, level + 1, ctx);
+					interpretSiardKey(c, level + 1, ctx, md);
 				} else if (c.getType().equals("siard_check")) {
-					interpretSiardCheck(c, level + 1, ctx);
+					interpretSiardCheck(c, level + 1, ctx, md);
 				}
 			}
 		}
 	}
 
-	void interpretSiardColumn(Node n, int level, Context ctx) {
+	void interpretSiardColumn(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
+		MdObject md = new MdObject(MdType.COLUMN, descriptionString);
+		parent.add(md);
 		if (descriptionString != null) {
 			indent(level);
 			System.out.format("* SIARD column: %s [%s]\n", nameString, descriptionString);
 		} else {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			md.setDocumentation(descriptionString);
 			indent(level);
 			System.out.format("* SIARD column: %s [%s]\n", nameString, descriptionString);
 			for (Node c : n.getChildren()) {
 				if (c.getType().equals("siard_field")) {
-					interpretSiardField(c, level + 1, ctx);
+					interpretSiardField(c, level + 1, ctx, md);
 				}
 			}
 		}
 	}
 	
-	void interpretSiardField(Node n, int level, Context ctx) {
+	void interpretSiardField(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
+		MdObject md = new MdObject(MdType.FIELD, descriptionString);
+		parent.add(md);
 		if (descriptionString != null) {
 			indent(level);
 			System.out.format("* SIARD field: %s [%s]\n", nameString, descriptionString);
 		} else {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			md.setDocumentation(descriptionString);
 			indent(level);
 			System.out.format("* SIARD field: %s [%s]\n", nameString, descriptionString);
 			for (Node c : n.getChildren()) {
 				if (c.getType().equals("siard_field")) {
-					interpretSiardField(c, level + 1, ctx);
+					interpretSiardField(c, level + 1, ctx, parent);
 				}
 			}
 		}
 	}
 	
-	void interpretSiardKey(Node n, int level, Context ctx) {
+	void interpretSiardKey(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
 		if (descriptionString == null) {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
 		}
+		MdObject md = new MdObject(MdType.KEY, descriptionString);
+		parent.add(md);
 		indent(level);
 		System.out.format("* SIARD key: %s [%s]\n", nameString, descriptionString);
 	}
 
-	void interpretSiardCheck(Node n, int level, Context ctx) {
+	void interpretSiardCheck(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
 		if (descriptionString == null) {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
 		}
+		MdObject md = new MdObject(MdType.CHECK, descriptionString);
+		parent.add(md);
 		indent(level);
 		System.out.format("* SIARD check: %s [%s]\n", nameString, descriptionString);
 	}
 	
-	void interpretSiardView(Node n, int level, Context ctx) {
+	void interpretSiardView(Node n, int level, Context ctx, MdObject parent) {
 		Node name = n.getChildByFieldName("name");
 		String nameString = interpretIdentifier(name, level + 1);
 		String descriptionString = interpretShortDescr(n, level, ctx);
+		MdObject md = new MdObject(MdType.FIELD, descriptionString);
+		parent.add(md);
 		if (descriptionString != null) {
 			indent(level);
 			System.out.format("* SIARD view: %s [%s]\n", nameString, descriptionString);
 		} else {
 			descriptionString = interpretSiardMetadataField("description", n, level, ctx);
+			md.setDocumentation(descriptionString);
 			indent(level);
 			System.out.format("* SIARD view: %s [%s]\n", nameString, descriptionString);
 			for (Node c : n.getChildren()) {
 				if (c.getType().equals("siard_column")) {
-					interpretSiardColumn(c, level + 1, ctx);
+					interpretSiardColumn(c, level + 1, ctx, md);
 				}
 			}
 		}
