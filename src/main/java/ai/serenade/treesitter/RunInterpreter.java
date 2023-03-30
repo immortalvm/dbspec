@@ -5,15 +5,18 @@ import java.io.FileNotFoundException;
 import java.util.Scanner;
 
 public class RunInterpreter {
-	final static String INPUT_FILENAME = "/home/thor/proj/idapiql/src/iDA-DbSpec/tree-sitter-dbspec/examples/complete_example.dbspec";
 
 	public static void main(String args[]) {
-			String dbspec = getDbSpecString(INPUT_FILENAME);
+		if (args.length > 0) {
+			String dbspec = getDbSpecString(args[0]);
 			System.out.println("--- Input ---");
 			System.out.println(dbspec);
 			System.out.println("-------------");
 			Interpreter i = new Interpreter(dbspec);
 			i.interpret();
+		} else {
+			System.out.format("Error: missing input filename\n");
+		}
 	}
 
 	static String getDbSpecString(String filename) {
