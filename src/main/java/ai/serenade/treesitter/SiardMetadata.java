@@ -30,7 +30,7 @@ public class SiardMetadata {
   
   static String getInfoField(MdObject mdo, String name) {
 	  MdObject child = mdo.getChild(MdType.INFO, name);
-	  return child != null ? child.getDocumentation() : "<value not provided>";
+	  return child != null && child.getDocumentation().length() > 0 ? child.getDocumentation() : "<value not provided>";
   }
   
 }
