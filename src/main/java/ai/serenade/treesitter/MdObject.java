@@ -2,6 +2,7 @@ package ai.serenade.treesitter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class MdObject {
@@ -25,6 +26,10 @@ public class MdObject {
 	public void setDocumentation(String documentation) {
 		this.documentation = documentation;
 	}
+	
+	public String getDocumentation() {
+		return this.documentation;
+	}
 
 	public void add(MdObject child) {
 		this.children.add(child);
@@ -33,6 +38,11 @@ public class MdObject {
 	public String toString() {
 		return String.format("(%s %s \"%s\"%S%s)", type, name, documentation.trim(), children.size() == 0 ? "" : " ",
 				children.stream().map((x) -> x.toString()).collect(Collectors.joining(" "))); 
+	}
+	
+	public MdObject getChild(MdType type, String name) {
+		Optional<MdObject> found = children.stream().filter((x) -> x.type == type && x.name.equals(name)).findAny();
+		return found.orElse(null);
 	}
 	
 }

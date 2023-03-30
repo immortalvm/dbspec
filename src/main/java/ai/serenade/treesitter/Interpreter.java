@@ -259,9 +259,10 @@ public class Interpreter {
 		}
 		indent(level);
 		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
-		// Siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+		Siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
 		MdObject md = (MdObject)connections.getValue(connectionString);
 		System.out.format("* SIARD metadata: %s\n", md.toString());
+		SiardMetadata.updateMetadata((String)fileString, md);
 	}
 
 	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx, MdObject parent) {
