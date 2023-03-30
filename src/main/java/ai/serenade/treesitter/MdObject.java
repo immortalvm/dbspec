@@ -23,6 +23,10 @@ public class MdObject {
 		this.children = new ArrayList<MdObject>();
 	}
 	
+	public String getName() {
+		return this.name;
+	}
+	
 	public void setDocumentation(String documentation) {
 		this.documentation = documentation;
 	}
@@ -38,6 +42,15 @@ public class MdObject {
 	public String toString() {
 		return String.format("(%s %s \"%s\"%S%s)", type, name, documentation.trim(), children.size() == 0 ? "" : " ",
 				children.stream().map((x) -> x.toString()).collect(Collectors.joining(" "))); 
+	}
+	
+	public List<MdObject> getChildren(MdType type) {
+		return children.stream().filter((x) -> x.type == type).collect(Collectors.toList()); 
+	}
+	
+	public MdObject getChild(MdType type) {
+		Optional<MdObject> found = children.stream().filter((x) -> x.type == type).findAny();
+		return found.orElse(null);
 	}
 	
 	public MdObject getChild(MdType type, String name) {
