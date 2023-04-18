@@ -5,10 +5,14 @@ import java.io.IOException;
 
 import ai.serenade.treesitter.MdObject.MdType;
 import ch.admin.bar.siard2.api.Archive;
+import ch.admin.bar.siard2.api.MetaCheckConstraint;
 import ch.admin.bar.siard2.api.MetaColumn;
 import ch.admin.bar.siard2.api.MetaData;
+import ch.admin.bar.siard2.api.MetaField;
+import ch.admin.bar.siard2.api.MetaForeignKey;
 import ch.admin.bar.siard2.api.MetaSchema;
 import ch.admin.bar.siard2.api.MetaTable;
+import ch.admin.bar.siard2.api.MetaType;
 import ch.admin.bar.siard2.api.MetaView;
 import ch.admin.bar.siard2.api.primary.ArchiveImpl;
 
@@ -45,6 +49,7 @@ public class SiardMetadata {
 		  schemaObject.setDocumentation(documentation);
 		  updateTableMetadata(schema, schemaObject);
 		  updateViewMetadata(schema, schemaObject);
+		  updateTypeMetadata(schema, schemaObject);
 	  }
   }
   
@@ -55,7 +60,11 @@ public class SiardMetadata {
 		  System.out.format("*** Table: name='%s' documentation='%s'\n", name, documentation);
 		  MetaTable table = schema.getMetaTable(name);
 		  table.setDescription(documentation);
-		  updateTableColumnMetadata(table, tObj);
+		  if (table != null) {
+			  updateTableColumnMetadata(table, tObj);
+			  updateKeyMetadata(table, tObj);
+			  updateCheckMetadata(table, tObj);
+		  }
 	  }
   }
   
@@ -65,10 +74,13 @@ public class SiardMetadata {
 		  String documentation = cObj.getDocumentation();
 		  System.out.format("*** Table Column: name='%s' documentation='%s'\n", name, documentation);
 		  MetaColumn column = table.getMetaColumn(name);
-		  column.setDescription(documentation); 
+		  if (column != null) {
+			  column.setDescription(documentation);
+			  updateFieldMetadata(column, cObj);
+		  }
 	  }
   }
-  
+
   static void updateViewMetadata(MetaSchema schema, MdObject mdo) {
 	  for (MdObject vObj : mdo.getChildren(MdType.VIEW)) {
 		  String name = vObj.getName();
@@ -76,7 +88,9 @@ public class SiardMetadata {
 		  MetaView view = schema.getMetaView(name);
 		  System.out.format("*** View: name='%s' documentation='%s'\n", name, documentation);
 		  view.setDescription(documentation);
-		  updateViewColumnMetadata(view, vObj);
+		  if (view != null) {
+			  updateViewColumnMetadata(view, vObj);
+		  }
 	  }
   }
   
@@ -86,7 +100,62 @@ public class SiardMetadata {
 		  String documentation = cObj.getDocumentation();
 		  System.out.format("*** View Column: name='%s' documentation='%s'\n", name, documentation);
 		  MetaColumn column = view.getMetaColumn(name);
-		  column.setDescription(documentation); 
+		  if (column != null) {
+			  column.setDescription(documentation); 
+			  updateFieldMetadata(column, cObj);
+		  }
+	  }
+  }
+  
+  static void updateTypeMetadata(MetaSchema schema, MdObject mdo) {
+	  for (MdObject tObj : mdo.getChildren(MdType.TYPE)) {
+		  String name = tObj.getName();
+		  String documentation = tObj.getDocumentation();
+		  System.out.format("*** Type: name='%s' documentation='%s'\n", name, documentation);
+		  MetaType type = schema.getMetaType(name);
+		  if (type != null) {
+			  type.setDescription(documentation);
+		  }
+	  }
+  }
+
+  static void updateFieldMetadata(MetaColumn column, MdObject mdo) {
+	  for (MdObject fObj : mdo.getChildren(MdType.FIELD)) {
+		  String name = fObj.getName();
+		  String documentation = fObj.getDocumentation();
+		  System.out.format("*** Field: name='%s' documentation='%s'\n", name, documentation);
+		  MetaField field;
+		try {
+			field = column.getMetaField(name);
+			if (field != null) {
+				field.setDescription(documentation);
+			}
+		} catch (IOException e) {
+		}
+	  }
+  }
+
+  static void updateKeyMetadata(MetaTable table, MdObject mdo) {
+	  for (MdObject kObj : mdo.getChildren(MdType.KEY)) {
+		  String name = kObj.getName();
+		  String documentation = kObj.getDocumentation();
+		  System.out.format("*** Key: name='%s' documentation='%s'\n", name, documentation);
+		  MetaForeignKey key = table.getMetaForeignKey(documentation);
+		  if (key != null) {
+			  key.setDescription(documentation);
+		  }
+	  }
+  }
+  
+  static void updateCheckMetadata(MetaTable table, MdObject mdo) {
+	  for (MdObject cObj : mdo.getChildren(MdType.KEY)) {
+		  String name = cObj.getName();
+		  String documentation = cObj.getDocumentation();
+		  System.out.format("*** Check: name='%s' documentation='%s'\n", name, documentation);
+		  MetaCheckConstraint check = table.getMetaCheckConstraint(name);
+		  if (check != null) {
+			  check.setDescription(documentation);
+		  }
 	  }
   }
   
