@@ -14,6 +14,7 @@ import ch.admin.bar.siard2.api.MetaSchema;
 import ch.admin.bar.siard2.api.MetaTable;
 import ch.admin.bar.siard2.api.MetaType;
 import ch.admin.bar.siard2.api.MetaView;
+import ch.admin.bar.siard2.api.Schema;
 import ch.admin.bar.siard2.api.primary.ArchiveImpl;
 
 public class SiardMetadata {
@@ -25,8 +26,7 @@ public class SiardMetadata {
 		  archive.open(siardFile);
 	      MetaData md = archive.getMetaData();
 	      updateMandatoryMetadata(md, mdo);
-	      MetaSchema schema = archive.getSchema(0).getMetaSchema(); // FIXME: get schema by name
-	      updateSchemaMetadata(schema, mdo);
+	      updateArchiveMetadata(archive, mdo);
 		  archive.close();
 	  } catch (IOException e) {
 		  e.printStackTrace();
@@ -42,14 +42,21 @@ public class SiardMetadata {
 	  md.setDataOriginTimespan(getInfoField(mdo, "dataOriginTimespan"));
   }
   
-  static void updateSchemaMetadata(MetaSchema schema, MdObject mdo) {
-	  MdObject schemaObject = mdo.getChild(MdType.SCHEMA);
-	  if (schemaObject != null) {
-		  String documentation = schemaObject.getDocumentation();
-		  schemaObject.setDocumentation(documentation);
-		  updateTableMetadata(schema, schemaObject);
-		  updateViewMetadata(schema, schemaObject);
-		  updateTypeMetadata(schema, schemaObject);
+  static void updateArchiveMetadata(Archive archive, MdObject mdo) {
+	  for (MdObject sObj : mdo.getChildren(MdType.SCHEMA)) {
+		  String name = sObj.getName();
+		  String documentation = sObj.getDocumentation();
+		  System.out.format("*** Schema: name='%s' documentation='%s'\n", name, documentation);
+		  Schema schema = archive.getSchema(name);
+		  if (schema != null) {
+			  MetaSchema metaSchema = schema.getMetaSchema();
+			  metaSchema.setDescription(documentation);
+			  if (sObj != null) {
+				  updateTableMetadata(metaSchema, sObj);
+				  updateViewMetadata(metaSchema, sObj);
+				  updateTypeMetadata(metaSchema, sObj);
+			  }
+		  }
 	  }
   }
   
