@@ -18,7 +18,7 @@ public class Siard {
 		this.dbms = dbms;
 	}
 	
-	public boolean transfer(Connection conn, String siardFilename, String lobFoldername) {
+	public void transfer(Connection conn, String siardFilename, String lobFoldername) throws SiardError {
         try {
     		String mimeType = ""; // TODO: what should be the value of mimeType
     		String jdbcUrl = conn.getMetaData().getURL().toString();
@@ -47,16 +47,11 @@ public class Siard {
             String response = readProcessOutput(p);
             p.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (p.exitValue() != 0) {
-            	System.out.println("SIARD transfer failed");
-                System.out.println(response);
-            	return false;
+            	throw new SiardError(response);
             }
         } catch(Exception e) {
-        	System.out.println("SIARD transfer failed");
-        	e.printStackTrace();
-            return false;
+            throw new SiardError(e.toString());
         }
-		return true;
 	}
 	
     private String readProcessOutput(Process p) throws Exception {

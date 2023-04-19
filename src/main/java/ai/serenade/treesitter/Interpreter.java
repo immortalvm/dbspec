@@ -263,7 +263,11 @@ public class Interpreter {
 		}
 		indent(level);
 		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
-		siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+		try {
+			siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+		} catch (SiardError e) {
+			throw new SemanticError("SIARD transfer failed: " + e.getReason());
+		}
 		MdObject md = (MdObject)connections.getValue(connectionString);
 		System.out.format("* SIARD metadata: %s\n", md.toString());
 		SiardMetadata.updateMetadata((String)fileString, md);
