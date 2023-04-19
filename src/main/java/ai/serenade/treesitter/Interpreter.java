@@ -1,6 +1,8 @@
 package ai.serenade.treesitter;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.file.FileSystems;
@@ -11,6 +13,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 import org.apache.commons.text.StringEscapeUtils;
@@ -34,14 +37,14 @@ public class Interpreter {
 		System.load(FileSystems.getDefault().getPath(TREE_SITTER_LIBRARY).normalize().toAbsolutePath().toString());
 	}
 
-	Interpreter(String source) {
+	Interpreter(String filename) {
 		try {
-			this.source = source;
+			this.source = getDbSpecString(filename);
 			this.context = new Context();
 			this.connections = new Context();
 			this.dbms = new Dbms();
 			this.siard = new Siard(this.dbms);
-			this.log = new Log(Log.DEBUG);
+			this.log = new Log(Log.INFO);
 			loadConfigFile();
 			log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
 			Parser parser = new Parser();
@@ -49,6 +52,8 @@ public class Interpreter {
 			tree = parser.parseString(source);
 			log.write(Log.DEBUG, "AST: %s\n\n", tree.getRootNode().getNodeString());
 			parser.close();
+		} catch (FileNotFoundException e) {
+			log.write(Log.FATAL, "File not found\n");
 		} catch (UnsupportedEncodingException e) {
 			log.write(Log.FATAL, "Unsupported encoding\n");
 		}
@@ -61,11 +66,23 @@ public class Interpreter {
 			log.write(Log.ERROR, "Unable to read configuration file '%s'\n", CONFIG_FILENAME);
 		}
 	}
-	
+
+	String getDbSpecString(String filename) throws FileNotFoundException {
+		File file = new File(filename);
+		Scanner s = new Scanner(file).useDelimiter("\\Z");
+		String result = s.next();
+		s.close();
+		return result;
+	}
+
 	void interpret() {
-		Node n = tree.getRootNode();
-		log.write(Log.DEBUG, "Interpretation:\n\n");
-		interpretSourceFile(n, 0, context);
+		try {
+			Node n = tree.getRootNode();
+			log.write(Log.DEBUG, "Interpretation:\n\n");
+			interpretSourceFile(n, 0, context);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	String indent(int level) {
@@ -142,7 +159,8 @@ public class Interpreter {
 
 	void interpretLog(Node n, int level, Context ctx) {
 		Object logValue = interpretBasicExpression(n.getChild(0), level + 1, ctx);
-		log.write(Log.INFO, "%s* Log message: '%s'\n", indent(level), logValue);
+		log.write(Log.DEBUG, "%s* Log message: '%s'\n", indent(level), logValue);
+		log.write(Log.INFO, "%s\n", logValue);
 	}
 
 	void interpretAssert(Node n, int level, Context ctx) {
