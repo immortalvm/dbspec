@@ -23,6 +23,8 @@ public class Interpreter {
 	Tree tree;
 	Context context;
 	Context connections;
+	Dbms dbms;
+	Siard siard;
 	Properties config = new Properties();
 	final static String CONFIG_FILENAME = "dbspec.conf";
 	final static String TREE_SITTER_LIBRARY = "../iDA-DbSpec-interpreter/libjava-tree-sitter.so";
@@ -36,6 +38,8 @@ public class Interpreter {
 			this.source = source;
 			this.context = new Context();
 			this.connections = new Context();
+			this.dbms = new Dbms();
+			this.siard = new Siard(this.dbms);
 			loadConfigFile();
 			Parser parser = new Parser();
 			parser.setLanguage(Languages.dbspec());
@@ -214,7 +218,7 @@ public class Interpreter {
 		indent(level);
 		System.out.format("* connection: %s\n", (String)urlString);
 		Context connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
-		return Dbms.connect((String)urlString, connectionContext);
+		return dbms.connect((String)urlString, connectionContext);
 	}
 	
 	void interpretExecuteSql(Node n, int level, Context ctx) {
@@ -228,7 +232,7 @@ public class Interpreter {
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing SQL on connection %s: '%s'\n", connectionString, sqlString);
-		Dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
+		dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
 	}
 	
 	ResultSet interpretQuery(Node n, int level, Context ctx) {
@@ -242,7 +246,7 @@ public class Interpreter {
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		indent(level);
 		System.out.format("* Executing SQL query on connection %s: '%s'\n", connectionString, sqlString);
-		return Dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
+		return dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
 	}
 	
 	void interpretSiardOutput(Node n, int level, Context ctx) {
@@ -259,7 +263,7 @@ public class Interpreter {
 		}
 		indent(level);
 		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
-		Siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+		siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
 		MdObject md = (MdObject)connections.getValue(connectionString);
 		System.out.format("* SIARD metadata: %s\n", md.toString());
 		SiardMetadata.updateMetadata((String)fileString, md);
