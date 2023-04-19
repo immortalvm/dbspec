@@ -9,9 +9,6 @@ public class RunInterpreter {
 	public static void main(String args[]) {
 		if (args.length > 0) {
 			String dbspec = getDbSpecString(args[0]);
-			System.out.println("--- Input ---");
-			System.out.println(dbspec);
-			System.out.println("-------------");
 			Interpreter i = new Interpreter(dbspec);
 			i.interpret();
 		} else {

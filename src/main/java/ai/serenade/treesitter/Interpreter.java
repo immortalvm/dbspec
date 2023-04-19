@@ -25,6 +25,7 @@ public class Interpreter {
 	Context connections;
 	Dbms dbms;
 	Siard siard;
+	Log log;
 	Properties config = new Properties();
 	final static String CONFIG_FILENAME = "dbspec.conf";
 	final static String TREE_SITTER_LIBRARY = "../iDA-DbSpec-interpreter/libjava-tree-sitter.so";
@@ -40,14 +41,16 @@ public class Interpreter {
 			this.connections = new Context();
 			this.dbms = new Dbms();
 			this.siard = new Siard(this.dbms);
+			this.log = new Log(Log.DEBUG);
 			loadConfigFile();
+			log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
 			Parser parser = new Parser();
 			parser.setLanguage(Languages.dbspec());
 			tree = parser.parseString(source);
-			System.out.format("AST: %s\n\n", tree.getRootNode().getNodeString());
+			log.write(Log.DEBUG, "AST: %s\n\n", tree.getRootNode().getNodeString());
 			parser.close();
 		} catch (UnsupportedEncodingException e) {
-			System.out.println("Unsupported encoding");
+			log.write(Log.FATAL, "Unsupported encoding\n");
 		}
 	}
 	
@@ -55,27 +58,28 @@ public class Interpreter {
 		try {
 			config.load(new FileInputStream(CONFIG_FILENAME));
 		} catch (Exception e) {
-			System.out.format("Unable to read configuration file '%s'\n", CONFIG_FILENAME);
+			log.write(Log.ERROR, "Unable to read configuration file '%s'\n", CONFIG_FILENAME);
 		}
 	}
 	
 	void interpret() {
 		Node n = tree.getRootNode();
-		System.out.format("Interpretation:\n\n");
+		log.write(Log.DEBUG, "Interpretation:\n\n");
 		interpretSourceFile(n, 0, context);
 	}
 
-	void indent(int level) {
+	String indent(int level) {
+		String result = "";
 		for (int i = 0; i < level; i++) {
-			System.out.print("  ");
+			result += "  ";
 		}
+		return result;
 	}
 
 	// Methods corresponding to non-terminal AST nodes
 	
 	void interpretSourceFile(Node n, int level, Context ctx) {
-		indent(level);
-		System.out.format("* source file\n");
+		log.write(Log.DEBUG, "%s* source file\n", indent(level));
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("parameters")) {
 				interpretParameters(c, level + 1, ctx);
@@ -86,8 +90,7 @@ public class Interpreter {
 	}
 	
 	void interpretParameters(Node n, int level, Context ctx) {
-		indent(level);
-		System.out.format("* parameters\n");
+		log.write(Log.DEBUG, "%s* parameters\n", indent(level));
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("parameter")) {
 				interpretParameter(c, level + 1, ctx);
@@ -106,8 +109,7 @@ public class Interpreter {
 		if (description != null && description.getType().equals("short_description")) {
 			descriptionString = interpretShortDescription(description, level + 1);
 		}
-		indent(level);
-		System.out.format("* parameter: %s  [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
 	}
 	
 	void interpretStatement(Node n, int level, Context ctx) {
@@ -140,14 +142,12 @@ public class Interpreter {
 
 	void interpretLog(Node n, int level, Context ctx) {
 		Object logValue = interpretBasicExpression(n.getChild(0), level + 1, ctx);
-		indent(level);
-		System.out.format("* Log message: '%s'\n", logValue);
+		log.write(Log.INFO, "%s* Log message: '%s'\n", indent(level), logValue);
 	}
 
 	void interpretAssert(Node n, int level, Context ctx) {
 		boolean comparisonValue = interpretComparison(n.getChild(0), level, ctx);
-		indent(level);
-		System.out.format("* Assertion: '%s'\n", comparisonValue);
+		log.write(Log.DEBUG, "%s* Assertion: '%s'\n", indent(level), comparisonValue);
 	}
 
 	void interpretSet(Node n, int level, Context ctx) {
@@ -163,8 +163,7 @@ public class Interpreter {
 		if (variableValue == null) {
 			throw new AstError();
 		}
-		indent(level);
-		System.out.format("* Set %s = '%s'\n", variableName, variableValue);
+		log.write(Log.DEBUG, "%s* Set %s = '%s'\n", indent(level), variableName, variableValue);
 		ctx.setValue(variableName, variableValue);
 	}
 
@@ -190,8 +189,7 @@ public class Interpreter {
 		}
 		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
-		indent(level);
-		System.out.format("* Executing using interpreter '%s': '%s'\n", (String)interpreterString, scriptString);
+		log.write(Log.DEBUG, "%s* Executing using interpreter '%s': '%s'\n", indent(level), (String)interpreterString, scriptString);
 	}
 	
 	String interpretScriptResult(Node n, int level, Context ctx) {
@@ -202,9 +200,8 @@ public class Interpreter {
 		}
 		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
-		indent(level);
 		String scriptResult = Script.execute((String)interpreterString, scriptString); 
-		System.out.format("* Executing using interpreter %s: '%s'\n", (String)interpreterString, scriptString);
+		log.write(Log.DEBUG, "%s* Executing using interpreter %s: '%s'\n", indent(level), (String)interpreterString, scriptString);
 		return scriptResult;
 	}
 
@@ -215,8 +212,7 @@ public class Interpreter {
 			throw new SemanticError("URL is not a string");
 		}
 		Node properties = n.getChildByFieldName("properties");
-		indent(level);
-		System.out.format("* connection: %s\n", (String)urlString);
+		log.write(Log.DEBUG, "%s* connection: %s\n", indent(level), (String)urlString);
 		Context connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
 		return dbms.connect((String)urlString, connectionContext);
 	}
@@ -230,8 +226,7 @@ public class Interpreter {
 		}
 		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
-		indent(level);
-		System.out.format("* Executing SQL on connection %s: '%s'\n", connectionString, sqlString);
+		log.write(Log.DEBUG, "%s* Executing SQL on connection %s: '%s'\n", indent(level), connectionString, sqlString);
 		dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
 	}
 	
@@ -244,8 +239,7 @@ public class Interpreter {
 		}
 		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
-		indent(level);
-		System.out.format("* Executing SQL query on connection %s: '%s'\n", connectionString, sqlString);
+		log.write(Log.DEBUG, "%s* Executing SQL query on connection %s: '%s'\n", indent(level), connectionString, sqlString);
 		return dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
 	}
 	
@@ -261,15 +255,14 @@ public class Interpreter {
 		if (!(fileString instanceof String)) {
 			throw new SemanticError("Filename is not a string");
 		}
-		indent(level);
-		System.out.format("* SIARD output %s to '%s'\n", connectionString, (String)fileString);
+		log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, (String)fileString);
 		try {
 			siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
 		} catch (SiardError e) {
 			throw new SemanticError("SIARD transfer failed: " + e.getReason());
 		}
 		MdObject md = (MdObject)connections.getValue(connectionString);
-		System.out.format("* SIARD metadata: %s\n", md.toString());
+		log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
 		SiardMetadata.updateMetadata((String)fileString, md);
 	}
 
@@ -288,8 +281,7 @@ public class Interpreter {
 		if (!(fieldString instanceof String)) {
 			throw new SemanticError("Siard field " + fieldName + " is not a string");
 		}
-		indent(level);
-		System.out.format("* SIARD metadata %s: %s\n", fieldName, (String)fieldString);
+		log.write(Log.DEBUG, "%s* SIARD metadata %s: %s\n", indent(level), fieldName, (String)fieldString);
 		MdObject md = new MdObject(MdType.INFO, fieldName, (String)fieldString);
 		parent.add(md);
 		return (String)fieldString;
@@ -300,8 +292,7 @@ public class Interpreter {
 		String connectionString = interpretIdentifier(connection, level + 1);
 		MdObject md = new MdObject(MdType.METADATA, "", "");
 		connections.setValue(connectionString, md);
-		indent(level);
-		System.out.format("* SIARD metadata for %s\n", connectionString);
+		log.write(Log.DEBUG, "%s* SIARD metadata for %s\n", indent(level), connectionString);
 		interpretSiardMetadataField("dbname", n, level + 1, ctx, md);
 		interpretSiardMetadataField("description", n, level + 1, ctx, md);
 		interpretSiardMetadataField("archiver", n, level + 1, ctx, md);
@@ -327,8 +318,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.SCHEMA, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD schema: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD schema: %s [%s]\n", indent(level), nameString, descriptionString);
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_type")) {
 				interpretSiardType(c, level + 1, ctx, md);
@@ -349,8 +339,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.TYPE, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD type: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD type: %s [%s]\n", indent(level), nameString, descriptionString);
 	}
 	
 	void interpretSiardTable(Node n, int level, Context ctx, MdObject parent) {
@@ -362,8 +351,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.TABLE, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD table: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD table: %s [%s]\n", indent(level), nameString, descriptionString);
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_column")) {
 				interpretSiardColumn(c, level + 1, ctx, md);
@@ -384,8 +372,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.COLUMN, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD column: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD column: %s [%s]\n", indent(level), nameString, descriptionString);
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_field")) {
 				interpretSiardField(c, level + 1, ctx, md);
@@ -402,8 +389,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.FIELD, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD field: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD field: %s [%s]\n", indent(level), nameString, descriptionString);
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_field")) {
 				interpretSiardField(c, level + 1, ctx, parent);
@@ -420,8 +406,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.KEY, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD key: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD key: %s [%s]\n", indent(level), nameString, descriptionString);
 	}
 
 	void interpretSiardCheck(Node n, int level, Context ctx, MdObject parent) {
@@ -433,8 +418,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.CHECK, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD check: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD check: %s [%s]\n", indent(level), nameString, descriptionString);
 	}
 	
 	void interpretSiardView(Node n, int level, Context ctx, MdObject parent) {
@@ -446,8 +430,7 @@ public class Interpreter {
 		}
 		MdObject md = new MdObject(MdType.VIEW, nameString, descriptionString);
 		parent.add(md);
-		indent(level);
-		System.out.format("* SIARD view: %s [%s]\n", nameString, descriptionString);
+		log.write(Log.DEBUG, "%s* SIARD view: %s [%s]\n", indent(level), nameString, descriptionString);
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("siard_column")) {
 				interpretSiardColumn(c, level + 1, ctx, md);
@@ -466,14 +449,12 @@ public class Interpreter {
 		if (!(titleString instanceof String)) {
 			throw new SemanticError("Title is not a string");
 		}
-		indent(level);
-		System.out.format("* Command declaration: %s\n", (String)titleString);
+		log.write(Log.DEBUG, "%s* Command declaration: %s\n", indent(level), (String)titleString);
 		Node parameters = n.getChildByFieldName("parameters");
 		interpretParameters(parameters, level + 1, ctx);
 		Node body = n.getChildByFieldName("body");
 		String bodyString = interpretRaw(body, level + 1, new Context(ctx, true));
-		indent(level);
-		System.out.format("'%s'\n", bodyString);
+		log.write(Log.DEBUG, "%s'%s'\n", indent(level), bodyString);
 	}
 	
 	void interpretForLoop(Node n, int level, Context ctx) {
@@ -482,8 +463,7 @@ public class Interpreter {
 		Node resultSet = n.getChildByFieldName("result_set");
 		String resultSetString = interpretIdentifier(resultSet, level + 1);
 		Node body = n.getChildByFieldName("body");
-		indent(level);
-		System.out.format("* for_loop: %s in %s\n", variablesStrings.stream().collect(Collectors.joining(", ")), resultSetString);
+		log.write(Log.DEBUG, "%s* for_loop: %s in %s\n", indent(level), variablesStrings.stream().collect(Collectors.joining(", ")), resultSetString);
 		ResultSet rs = (ResultSet)(ctx.getValue(resultSetString));
 		try {
 			ResultSetMetaData rsmeta = rs.getMetaData();
@@ -519,7 +499,7 @@ public class Interpreter {
 	void interpretConditional(Node n, int level, Context ctx) {
 		Node condition = n.getChildByFieldName("condition");
 		Boolean comparisonValue = interpretComparison(condition, level + 1, ctx);
-		System.out.format("* Conditional: value = '%s'\n", comparisonValue.booleanValue());
+		log.write(Log.DEBUG, "* Conditional: value = '%s'\n", comparisonValue.booleanValue());
 		if (comparisonValue.booleanValue()) {
 			Node thenBlock = n.getChildByFieldName("then");
 			interpretStatementBlock(thenBlock, level + 1, ctx);
@@ -532,8 +512,7 @@ public class Interpreter {
 	}
 	
 	void interpretStatementBlock(Node n, int level, Context ctx) {
-		indent(level);
-		System.out.format("* statement_block\n");
+		log.write(Log.DEBUG, "%s* statement_block\n", indent(level));
 		for (Node c : n.getChildren()) {
 			interpretStatement(c, level, ctx);
 		}
@@ -596,7 +575,7 @@ public class Interpreter {
 		Object leftValue = interpretBasicExpression(left, level + 1, ctx);
 		Node right = n.getChildByFieldName("right");
 		String rightOperator = interpretDotOperator(right, level + 1);
-		System.out.format("* Dot expression: value = '%s'.'%s'\n", leftValue, rightOperator);
+		log.write(Log.DEBUG, "* Dot expression: value = '%s'.'%s'\n", leftValue, rightOperator);
 		if (leftValue instanceof String) {
 			if (rightOperator.equals("stripped")) {
 				return ((String)leftValue).trim();

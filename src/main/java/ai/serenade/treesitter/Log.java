@@ -1,0 +1,22 @@
+package ai.serenade.treesitter;
+
+public class Log {
+	static final int FATAL = 0;
+	static final int ERROR = 1;
+	static final int WARNING = 2;
+	static final int INFO = 3;
+	static final int DEBUG = 4;
+	
+	int level;
+	
+	public Log(int level) {
+		this.level = level;
+	}
+	
+	public void write(int level, String message, Object... args) {
+		if (level <= this.level) {
+			System.out.format(message, (Object[])args);
+		}
+	}
+	
+}
