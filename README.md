@@ -1,6 +1,6 @@
 # DbSpec interpreter
 
-Java bindings for [tree-sitter](https://tree-sitter.github.io/tree-sitter/).
+An interpreter for the DbSpec language.
 
 ## Preparing
 
