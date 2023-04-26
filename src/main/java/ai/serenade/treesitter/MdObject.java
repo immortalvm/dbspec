@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 public class MdObject {
 	
 	public enum MdType {
-		METADATA, INFO, SCHEMA,	TYPE, TABLE, COLUMN, FIELD, KEY, CHECK, VIEW;
+		METADATA, INFO, SCHEMA,	TYPE, TABLE, COLUMN, FIELD, KEY, CHECK, VIEW, COMMAND, PARAMETER, SQL;
 	}
 
 	MdType type;

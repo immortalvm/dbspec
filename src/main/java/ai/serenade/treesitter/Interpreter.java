@@ -273,6 +273,7 @@ public class Interpreter {
 		if (!(fileString instanceof String)) {
 			throw new SemanticError("Filename is not a string");
 		}
+	    String roaeFileString = ((String)fileString).indexOf('.') == -1 ? (String)fileString + ".roae" : ((String)fileString).replaceAll("\\.[^.]*$", ".roae");
 		log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, (String)fileString);
 		try {
 			siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
@@ -282,6 +283,8 @@ public class Interpreter {
 		MdObject md = (MdObject)connections.getValue(connectionString);
 		log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
 		SiardMetadata.updateMetadata((String)fileString, md);
+		log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), (String)roaeFileString);
+		RoaeMetadata.updateMetadata(roaeFileString, md);
 	}
 
 	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx, MdObject parent) {
@@ -322,7 +325,7 @@ public class Interpreter {
 			if (c.getType().equals("siard_schema")) {
 				interpretSiardSchema(c, level + 1, ctx, md);
 			} else if (c.getType().equals("command_declaration")) {
-				interpretCommandDeclaration(c, level + 1, ctx);
+				interpretCommandDeclaration(c, level + 1, ctx, md);
 			} 
 		}
 	}
@@ -456,7 +459,7 @@ public class Interpreter {
 		}
 	}
 	
-	void interpretCommandDeclaration(Node n, int level, Context ctx) {
+	void interpretCommandDeclaration(Node n, int level, Context ctx, MdObject parent) {
 		Node title = n.getChildByFieldName("title");
 		Object titleString = null;
 		if (title.getType().equals("raw")) {
@@ -467,12 +470,41 @@ public class Interpreter {
 		if (!(titleString instanceof String)) {
 			throw new SemanticError("Title is not a string");
 		}
+		MdObject md = new MdObject(MdType.COMMAND, "", (String)titleString);
+		parent.add(md);
 		log.write(Log.DEBUG, "%s* Command declaration: %s\n", indent(level), (String)titleString);
 		Node parameters = n.getChildByFieldName("parameters");
-		interpretParameters(parameters, level + 1, ctx);
+		interpretCommandParameters(parameters, level + 1, ctx, md);
 		Node body = n.getChildByFieldName("body");
 		String bodyString = interpretRaw(body, level + 1, new Context(ctx, true));
+		MdObject mdSql= new MdObject(MdType.SQL, "", bodyString);
+		md.add(mdSql);
 		log.write(Log.DEBUG, "%s'%s'\n", indent(level), bodyString);
+	}
+
+	void interpretCommandParameters(Node n, int level, Context ctx, MdObject parent) {
+		log.write(Log.DEBUG, "%s* parameters\n", indent(level));
+		for (Node c : n.getChildren()) {
+			if (c.getType().equals("parameter")) {
+				interpretCommandParameter(c, level + 1, ctx, parent);
+			} else {
+				throw new AstError();
+			}
+		}
+	}
+	
+	void interpretCommandParameter(Node n, int level, Context ctx, MdObject parent) {
+		Node name = n.getChildByFieldName("name");
+		String nameString = interpretIdentifier(name, level + 1);
+		ctx.setValue(nameString, config.getProperty(nameString));
+		Node description = n.getChildByFieldName("description");
+		String descriptionString = "";
+		if (description != null && description.getType().equals("short_description")) {
+			descriptionString = interpretShortDescription(description, level + 1);
+		}
+		MdObject md = new MdObject(MdType.PARAMETER, nameString, descriptionString);
+		parent.add(md);
+		log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
 	}
 	
 	void interpretForLoop(Node n, int level, Context ctx) {
