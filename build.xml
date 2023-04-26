@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project iDA-DbSpec-interpreter with Jar-in-Jar Loader">
+    <!--this file was created by Eclipse Runnable JAR file Export Wizard-->
+    <!--ANT 1.7 is required-->
+    <!--define folder properties-->
+    <property name="dir.buildfile" value="."/>
+    <property name="dir.workspace" value="/home/thor/eclipse-workspace-idapiql"/>
+    <property name="dir.jarfile" value="${dir.buildfile}"/>
+    <target name="create_run_jar">
+        <jar destfile="${dir.jarfile}/dbspec.jar">
+            <manifest>
+                <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
+                <attribute name="Rsrc-Main-Class" value="ai.serenade.treesitter.RunInterpreter"/>
+                <attribute name="Class-Path" value="."/>
+                <attribute name="Rsrc-Class-Path" value="./ org.junit.jupiter.api_5.7.0.v20201026-1537.jar org.junit.jupiter.engine_5.7.0.v20201026-1537.jar org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar org.junit.jupiter.params_5.7.0.v20201026-1537.jar org.junit.platform.commons_1.7.0.v20201026-1537.jar org.junit.platform.engine_1.7.0.v20201026-1537.jar org.junit.platform.launcher_1.7.0.v20201026-1537.jar org.junit.platform.runner_1.7.0.v20201026-1537.jar org.junit.platform.suite.api_1.7.0.v20201026-1537.jar org.junit.vintage.engine_5.7.0.v20201026-1537.jar org.opentest4j_1.2.0.v20190826-0900.jar org.apiguardian_1.1.0.v20190826-0900.jar org.junit_4.13.0.v20200204-1500.jar org.hamcrest.core_1.3.0.v20180420-1519.jar commons-text-1.10.0.jar commons-lang3-3.12.0.jar enterutils.jar zip64.jar activation-1.1.1.jar jaxb-api.jar jaxb-core.jar jaxb-impl.jar msv-core-2010.2.jar stax2-api-3.1.1.jar woodstox-core-lgpl-4.1.2.jar woodstox-msv-rng-datatype-20020414.jar xsdlib-2010.1.jar siardapi.jar Zip64File.jar jackcess-1.2.6a.jar commons-lang-2.6.jar commons-logging-1.1.3.jar jdbcbase.jar antlr-runtime-4.5.2.jar sqlparser.jar jdbcaccess.jar jackcess-2.1.6a.jar postgresql.42.2.5.jar jdbcpostgres.jar postgresql-42.2.5.jar pdq.jar db2jcc4.jar jdbcdb2.jar mysql-connector-java-8.0.18.jar jts-1.13.jar jdbcmysql.jar ojdbc6.jar jdbcoracle.jar xdb6.jar xmlparserv2.jar sqljdbc41.jar jdbcmssql.jar jts-1.14.jar siardcmd.jar"/>
+            </manifest>
+            <zipfileset src="jar-in-jar-loader.zip"/>
+            <fileset dir="${dir.jarfile}/bin"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.api_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.engine_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.params_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.commons_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.engine_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.launcher_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.runner_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.suite.api_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.vintage.engine_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.opentest4j_1.2.0.v20190826-0900.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.apiguardian_1.1.0.v20190826-0900.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit_4.13.0.v20200204-1500.jar"/>
+            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.hamcrest.core_1.3.0.v20180420-1519.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="commons-text-1.10.0.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="commons-lang3-3.12.0.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="enterutils.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="zip64.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="activation-1.1.1.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jaxb-api.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jaxb-core.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jaxb-impl.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="msv-core-2010.2.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="stax2-api-3.1.1.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="woodstox-core-lgpl-4.1.2.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="woodstox-msv-rng-datatype-20020414.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="xsdlib-2010.1.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="siardapi.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="Zip64File.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jackcess-1.2.6a.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="commons-lang-2.6.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="commons-logging-1.1.3.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcbase.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="antlr-runtime-4.5.2.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="sqlparser.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcaccess.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jackcess-2.1.6a.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="postgresql.42.2.5.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcpostgres.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="postgresql-42.2.5.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="pdq.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="db2jcc4.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcdb2.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="mysql-connector-java-8.0.18.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jts-1.13.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcmysql.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="ojdbc6.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcoracle.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="xdb6.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="xmlparserv2.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="sqljdbc41.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jdbcmssql.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="jts-1.14.jar"/>
+            <zipfileset dir="${dir.jarfile}/lib" includes="siardcmd.jar"/>
+        </jar>
+    </target>
+</project>

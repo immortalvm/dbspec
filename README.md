@@ -20,10 +20,16 @@ git submodule update --init --recursive
 
 ## Building
 
-Before you can start using the DbSpec interpreter, you need to build a shared library:
+Before you can build the DbSpec interpreter, you need to build a shared library:
 
 ```shell
 ./build.py -o libjava-tree-sitter tree-sitter-dbspec
+```
+
+Then build the interpreter as a jar file (dbspec.jar):
+
+```shell
+ant create_run_jar
 ```
 
 ## Running
