@@ -12,20 +12,20 @@
     <property name="target" value="1.8"/>
     <property name="source" value="1.8"/>
     <path id="JUnit 5.libraryclasspath">
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.api_5.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.engine_5.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.params_5.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.commons_1.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.engine_1.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.launcher_1.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.runner_1.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.suite.api_1.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit.vintage.engine_5.7.0.v20201026-1537.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.opentest4j_1.2.0.v20190826-0900.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.apiguardian_1.1.0.v20190826-0900.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.junit_4.13.0.v20200204-1500.jar"/>
-        <pathelement location="../../../../.p2/pool/plugins/org.hamcrest.core_1.3.0.v20180420-1519.jar"/>
+        <pathelement location="plugins/org.junit.jupiter.api_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.jupiter.engine_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.jupiter.params_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.platform.commons_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.platform.engine_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.platform.launcher_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.platform.runner_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.platform.suite.api_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.junit.vintage.engine_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="plugins/org.opentest4j_1.2.0.v20190826-0900.jar"/>
+        <pathelement location="plugins/org.apiguardian_1.1.0.v20190826-0900.jar"/>
+        <pathelement location="plugins/org.junit_4.13.0.v20200204-1500.jar"/>
+        <pathelement location="plugins/org.hamcrest.core_1.3.0.v20180420-1519.jar"/>
     </path>
     <path id="iDA-DbSpec-interpreter.classpath">
         <pathelement location="bin"/>
@@ -317,20 +317,20 @@
             </manifest>
             <zipfileset src="jar-in-jar-loader.zip"/>
             <fileset dir="${dir.jarfile}/bin"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.api_5.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.engine_5.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.jupiter.params_5.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.commons_1.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.engine_1.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.launcher_1.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.runner_1.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.platform.suite.api_1.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit.vintage.engine_5.7.0.v20201026-1537.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.opentest4j_1.2.0.v20190826-0900.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.apiguardian_1.1.0.v20190826-0900.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.junit_4.13.0.v20200204-1500.jar"/>
-            <zipfileset dir="/home/thor/.p2/pool/plugins" includes="org.hamcrest.core_1.3.0.v20180420-1519.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.jupiter.api_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.jupiter.engine_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.jupiter.params_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.platform.commons_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.platform.engine_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.platform.launcher_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.platform.runner_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.platform.suite.api_1.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit.vintage.engine_5.7.0.v20201026-1537.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.opentest4j_1.2.0.v20190826-0900.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.apiguardian_1.1.0.v20190826-0900.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.junit_4.13.0.v20200204-1500.jar"/>
+            <zipfileset dir="${dir.jarfile}/plugins" includes="org.hamcrest.core_1.3.0.v20180420-1519.jar"/>
             <zipfileset dir="${dir.jarfile}/lib" includes="commons-text-1.10.0.jar"/>
             <zipfileset dir="${dir.jarfile}/lib" includes="commons-lang3-3.12.0.jar"/>
             <zipfileset dir="${dir.jarfile}/lib" includes="enterutils.jar"/>
