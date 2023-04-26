@@ -2,6 +2,26 @@
 
 An interpreter for the DbSpec language.
 
+## Prerequisites
+
+### JDK
+
+A Java Development Kit, version 8 or greater must be installed.
+On Debian and Debian-based distros the package ```openjdk-11-jdk-headless``` is known to work.
+
+The environment variable ```JAVA_HOME``` must be set.
+For example:
+
+```shell
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+```
+
+### Ant
+
+Apache Ant is required for building the project.
+On Debian and Debian-based distros the package ```ant``` can be installed.
+
+
 ## Preparing
 
 Recursively clone the project with submodules:
