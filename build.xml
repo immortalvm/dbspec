@@ -1,11 +1,312 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project default="create_run_jar" name="Create Runnable Jar for Project iDA-DbSpec-interpreter with Jar-in-Jar Loader">
-    <!--this file was created by Eclipse Runnable JAR file Export Wizard-->
-    <!--ANT 1.7 is required-->
-    <!--define folder properties-->
+<!-- WARNING: Eclipse auto-generated file.
+              Any modifications will be overwritten.
+              To include a user specific buildfile here, simply create one in the same
+              directory with the processing instruction <?eclipse.ant.import?>
+              as the first entry and export the buildfile again. --><project basedir="." default="build" name="iDA-DbSpec-interpreter">
+    <property environment="env"/>
     <property name="dir.buildfile" value="."/>
-    <property name="dir.workspace" value="/home/thor/eclipse-workspace-idapiql"/>
     <property name="dir.jarfile" value="${dir.buildfile}"/>
+    <property name="junit.output.dir" value="junit"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.8"/>
+    <property name="source" value="1.8"/>
+    <path id="JUnit 5.libraryclasspath">
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.api_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.engine_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.migrationsupport_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.jupiter.params_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.commons_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.engine_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.launcher_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.runner_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.platform.suite.api_1.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit.vintage.engine_5.7.0.v20201026-1537.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.opentest4j_1.2.0.v20190826-0900.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.apiguardian_1.1.0.v20190826-0900.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.junit_4.13.0.v20200204-1500.jar"/>
+        <pathelement location="../../../../.p2/pool/plugins/org.hamcrest.core_1.3.0.v20180420-1519.jar"/>
+    </path>
+    <path id="iDA-DbSpec-interpreter.classpath">
+        <pathelement location="bin"/>
+        <path refid="JUnit 5.libraryclasspath"/>
+        <pathelement location="lib/commons-text-1.10.0.jar"/>
+        <pathelement location="lib/commons-lang3-3.12.0.jar"/>
+        <pathelement location="lib/siardapi.jar"/>
+        <pathelement location="lib/siardcmd.jar"/>
+        <pathelement location="lib/enterutils.jar"/>
+        <pathelement location="lib/zip64.jar"/>
+        <pathelement location="lib/jaxb-api.jar"/>
+        <pathelement location="lib/jdbcbase.jar"/>
+        <pathelement location="lib/postgresql-42.2.5.jar"/>
+        <pathelement location="lib/jdbcpostgres.jar"/>
+        <pathelement location="lib/jdbcoracle.jar"/>
+        <pathelement location="lib/jdbcmssql.jar"/>
+        <pathelement location="lib/jdbcmysql.jar"/>
+        <pathelement location="lib/jdbcdb2.jar"/>
+        <pathelement location="lib/jdbcaccess.jar"/>
+        <pathelement location="lib/sqlparser.jar"/>
+        <pathelement location="lib/antlr-runtime-4.5.2.jar"/>
+        <pathelement location="lib/activation-1.1.1.jar"/>
+        <pathelement location="lib/jaxb-core.jar"/>
+        <pathelement location="lib/jaxb-impl.jar"/>
+        <pathelement location="lib/msv-core-2010.2.jar"/>
+        <pathelement location="lib/stax2-api-3.1.1.jar"/>
+        <pathelement location="lib/woodstox-core-lgpl-4.1.2.jar"/>
+        <pathelement location="lib/woodstox-msv-rng-datatype-20020414.jar"/>
+        <pathelement location="lib/xsdlib-2010.1.jar"/>
+        <pathelement location="lib/ojdbc6.jar"/>
+        <pathelement location="lib/sqljdbc41.jar"/>
+        <pathelement location="lib/mysql-connector-java-8.0.18.jar"/>
+        <pathelement location="lib/jts-1.14.jar"/>
+        <pathelement location="lib/db2jcc4.jar"/>
+        <pathelement location="lib/jackcess-2.1.6a.jar"/>
+        <pathelement location="lib/commons-lang-2.6.jar"/>
+        <pathelement location="lib/commons-logging-1.1.3.jar"/>
+        <pathelement location="lib/xdb6.jar"/>
+        <pathelement location="lib/xmlparserv2.jar"/>
+    </path>
+    <path id="run.RunInterpreter.classpath">
+        <path refid="iDA-DbSpec-interpreter.classpath"/>
+        <path refid="JUnit 5.libraryclasspath"/>
+        <pathelement location="lib/commons-text-1.10.0.jar"/>
+        <pathelement location="lib/commons-lang3-3.12.0.jar"/>
+        <pathelement location="lib/enterutils.jar"/>
+        <pathelement location="lib/zip64.jar"/>
+        <pathelement location="lib/activation-1.1.1.jar"/>
+        <pathelement location="lib/jaxb-api.jar"/>
+        <pathelement location="lib/jaxb-core.jar"/>
+        <pathelement location="lib/jaxb-impl.jar"/>
+        <pathelement location="lib/msv-core-2010.2.jar"/>
+        <pathelement location="lib/stax2-api-3.1.1.jar"/>
+        <pathelement location="lib/woodstox-core-lgpl-4.1.2.jar"/>
+        <pathelement location="lib/woodstox-msv-rng-datatype-20020414.jar"/>
+        <pathelement location="lib/xsdlib-2010.1.jar"/>
+        <pathelement location="lib/siardapi.jar"/>
+        <pathelement location="lib/Zip64File.jar"/>
+        <pathelement location="lib/jackcess-1.2.6a.jar"/>
+        <pathelement location="lib/commons-lang-2.6.jar"/>
+        <pathelement location="lib/commons-logging-1.1.3.jar"/>
+        <pathelement location="lib/jdbcbase.jar"/>
+        <pathelement location="lib/antlr-runtime-4.5.2.jar"/>
+        <pathelement location="lib/sqlparser.jar"/>
+        <pathelement location="lib/jdbcaccess.jar"/>
+        <pathelement location="lib/jackcess-2.1.6a.jar"/>
+        <pathelement location="lib/postgresql.42.2.5.jar"/>
+        <pathelement location="lib/jdbcpostgres.jar"/>
+        <pathelement location="lib/postgresql-42.2.5.jar"/>
+        <pathelement location="lib/pdq.jar"/>
+        <pathelement location="lib/db2jcc4.jar"/>
+        <pathelement location="lib/jdbcdb2.jar"/>
+        <pathelement location="lib/mysql-connector-java-8.0.18.jar"/>
+        <pathelement location="lib/jts-1.13.jar"/>
+        <pathelement location="lib/jdbcmysql.jar"/>
+        <pathelement location="lib/ojdbc6.jar"/>
+        <pathelement location="lib/jdbcoracle.jar"/>
+        <pathelement location="lib/xdb6.jar"/>
+        <pathelement location="lib/xmlparserv2.jar"/>
+        <pathelement location="lib/sqljdbc41.jar"/>
+        <pathelement location="lib/jdbcmssql.jar"/>
+        <pathelement location="lib/jts-1.14.jar"/>
+        <pathelement location="lib/siardcmd.jar"/>
+    </path>
+    <path id="run.ParserTest (1).classpath">
+        <path refid="iDA-DbSpec-interpreter.classpath"/>
+        <path refid="JUnit 5.libraryclasspath"/>
+        <pathelement location="lib/commons-text-1.10.0.jar"/>
+        <pathelement location="lib/commons-lang3-3.12.0.jar"/>
+        <pathelement location="lib/enterutils.jar"/>
+        <pathelement location="lib/zip64.jar"/>
+        <pathelement location="lib/activation-1.1.1.jar"/>
+        <pathelement location="lib/jaxb-api.jar"/>
+        <pathelement location="lib/jaxb-core.jar"/>
+        <pathelement location="lib/jaxb-impl.jar"/>
+        <pathelement location="lib/msv-core-2010.2.jar"/>
+        <pathelement location="lib/stax2-api-3.1.1.jar"/>
+        <pathelement location="lib/woodstox-core-lgpl-4.1.2.jar"/>
+        <pathelement location="lib/woodstox-msv-rng-datatype-20020414.jar"/>
+        <pathelement location="lib/xsdlib-2010.1.jar"/>
+        <pathelement location="lib/siardapi.jar"/>
+        <pathelement location="lib/Zip64File.jar"/>
+        <pathelement location="lib/jackcess-1.2.6a.jar"/>
+        <pathelement location="lib/commons-lang-2.6.jar"/>
+        <pathelement location="lib/commons-logging-1.1.3.jar"/>
+        <pathelement location="lib/jdbcbase.jar"/>
+        <pathelement location="lib/antlr-runtime-4.5.2.jar"/>
+        <pathelement location="lib/sqlparser.jar"/>
+        <pathelement location="lib/jdbcaccess.jar"/>
+        <pathelement location="lib/jackcess-2.1.6a.jar"/>
+        <pathelement location="lib/postgresql.42.2.5.jar"/>
+        <pathelement location="lib/jdbcpostgres.jar"/>
+        <pathelement location="lib/postgresql-42.2.5.jar"/>
+        <pathelement location="lib/pdq.jar"/>
+        <pathelement location="lib/db2jcc4.jar"/>
+        <pathelement location="lib/jdbcdb2.jar"/>
+        <pathelement location="lib/mysql-connector-java-8.0.18.jar"/>
+        <pathelement location="lib/jts-1.13.jar"/>
+        <pathelement location="lib/jdbcmysql.jar"/>
+        <pathelement location="lib/ojdbc6.jar"/>
+        <pathelement location="lib/jdbcoracle.jar"/>
+        <pathelement location="lib/xdb6.jar"/>
+        <pathelement location="lib/xmlparserv2.jar"/>
+        <pathelement location="lib/sqljdbc41.jar"/>
+        <pathelement location="lib/jdbcmssql.jar"/>
+        <pathelement location="lib/jts-1.14.jar"/>
+        <pathelement location="lib/siardcmd.jar"/>
+    </path>
+    <path id="run.SiardMetadata.classpath">
+        <path refid="iDA-DbSpec-interpreter.classpath"/>
+        <path refid="JUnit 5.libraryclasspath"/>
+        <pathelement location="lib/commons-text-1.10.0.jar"/>
+        <pathelement location="lib/commons-lang3-3.12.0.jar"/>
+        <pathelement location="lib/enterutils.jar"/>
+        <pathelement location="lib/zip64.jar"/>
+        <pathelement location="lib/activation-1.1.1.jar"/>
+        <pathelement location="lib/jaxb-api.jar"/>
+        <pathelement location="lib/jaxb-core.jar"/>
+        <pathelement location="lib/jaxb-impl.jar"/>
+        <pathelement location="lib/msv-core-2010.2.jar"/>
+        <pathelement location="lib/stax2-api-3.1.1.jar"/>
+        <pathelement location="lib/woodstox-core-lgpl-4.1.2.jar"/>
+        <pathelement location="lib/woodstox-msv-rng-datatype-20020414.jar"/>
+        <pathelement location="lib/xsdlib-2010.1.jar"/>
+        <pathelement location="lib/siardapi.jar"/>
+        <pathelement location="lib/Zip64File.jar"/>
+        <pathelement location="lib/jackcess-1.2.6a.jar"/>
+        <pathelement location="lib/commons-lang-2.6.jar"/>
+        <pathelement location="lib/commons-logging-1.1.3.jar"/>
+        <pathelement location="lib/jdbcbase.jar"/>
+        <pathelement location="lib/antlr-runtime-4.5.2.jar"/>
+        <pathelement location="lib/sqlparser.jar"/>
+        <pathelement location="lib/jdbcaccess.jar"/>
+        <pathelement location="lib/jackcess-2.1.6a.jar"/>
+        <pathelement location="lib/postgresql.42.2.5.jar"/>
+        <pathelement location="lib/jdbcpostgres.jar"/>
+        <pathelement location="lib/postgresql-42.2.5.jar"/>
+        <pathelement location="lib/pdq.jar"/>
+        <pathelement location="lib/db2jcc4.jar"/>
+        <pathelement location="lib/jdbcdb2.jar"/>
+        <pathelement location="lib/mysql-connector-java-8.0.18.jar"/>
+        <pathelement location="lib/jts-1.13.jar"/>
+        <pathelement location="lib/jdbcmysql.jar"/>
+        <pathelement location="lib/ojdbc6.jar"/>
+        <pathelement location="lib/jdbcoracle.jar"/>
+        <pathelement location="lib/xdb6.jar"/>
+        <pathelement location="lib/xmlparserv2.jar"/>
+        <pathelement location="lib/sqljdbc41.jar"/>
+        <pathelement location="lib/jdbcmssql.jar"/>
+        <pathelement location="lib/jts-1.14.jar"/>
+        <pathelement location="lib/siardcmd.jar"/>
+    </path>
+    <path id="run.Interpreter.classpath">
+        <path refid="iDA-DbSpec-interpreter.classpath"/>
+        <path refid="JUnit 5.libraryclasspath"/>
+        <pathelement location="lib/commons-text-1.10.0.jar"/>
+        <pathelement location="lib/commons-lang3-3.12.0.jar"/>
+        <pathelement location="lib/enterutils.jar"/>
+        <pathelement location="lib/zip64.jar"/>
+        <pathelement location="lib/activation-1.1.1.jar"/>
+        <pathelement location="lib/jaxb-api.jar"/>
+        <pathelement location="lib/jaxb-core.jar"/>
+        <pathelement location="lib/jaxb-impl.jar"/>
+        <pathelement location="lib/msv-core-2010.2.jar"/>
+        <pathelement location="lib/stax2-api-3.1.1.jar"/>
+        <pathelement location="lib/woodstox-core-lgpl-4.1.2.jar"/>
+        <pathelement location="lib/woodstox-msv-rng-datatype-20020414.jar"/>
+        <pathelement location="lib/xsdlib-2010.1.jar"/>
+        <pathelement location="lib/siardapi.jar"/>
+        <pathelement location="lib/Zip64File.jar"/>
+        <pathelement location="lib/jackcess-1.2.6a.jar"/>
+        <pathelement location="lib/commons-lang-2.6.jar"/>
+        <pathelement location="lib/commons-logging-1.1.3.jar"/>
+        <pathelement location="lib/jdbcbase.jar"/>
+        <pathelement location="lib/antlr-runtime-4.5.2.jar"/>
+        <pathelement location="lib/sqlparser.jar"/>
+        <pathelement location="lib/jdbcaccess.jar"/>
+        <pathelement location="lib/jackcess-2.1.6a.jar"/>
+        <pathelement location="lib/postgresql.42.2.5.jar"/>
+        <pathelement location="lib/jdbcpostgres.jar"/>
+        <pathelement location="lib/postgresql-42.2.5.jar"/>
+        <pathelement location="lib/pdq.jar"/>
+        <pathelement location="lib/db2jcc4.jar"/>
+        <pathelement location="lib/jdbcdb2.jar"/>
+        <pathelement location="lib/mysql-connector-java-8.0.18.jar"/>
+        <pathelement location="lib/jts-1.13.jar"/>
+        <pathelement location="lib/jdbcmysql.jar"/>
+        <pathelement location="lib/ojdbc6.jar"/>
+        <pathelement location="lib/jdbcoracle.jar"/>
+        <pathelement location="lib/xdb6.jar"/>
+        <pathelement location="lib/xmlparserv2.jar"/>
+        <pathelement location="lib/sqljdbc41.jar"/>
+        <pathelement location="lib/jdbcmssql.jar"/>
+        <pathelement location="lib/jts-1.14.jar"/>
+        <pathelement location="lib/siardcmd.jar"/>
+    </path>
+    <target name="init">
+        <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="src/main/java">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="src/test/java">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="bin"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" includeantruntime="false" source="${source}" target="${target}">
+            <src path="src/main/java"/>
+            <src path="src/test/java"/>
+            <classpath refid="iDA-DbSpec-interpreter.classpath"/>
+        </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    <target name="RunInterpreter">
+        <java classname="ai.serenade.treesitter.RunInterpreter" failonerror="true" fork="yes">
+            <arg line="/home/thor/proj/idapiql/src/complete_example.dbspec"/>
+            <classpath refid="run.RunInterpreter.classpath"/>
+        </java>
+    </target>
+    <target name="ParserTest (1)">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="ai.serenade.treesitter.ParserTest" todir="${junit.output.dir}"/>
+            <jvmarg line="-ea"/>
+            <classpath refid="run.ParserTest (1).classpath"/>
+        </junit>
+    </target>
+    <target name="SiardMetadata">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="ai.serenade.treesitter.SiardMetadata" todir="${junit.output.dir}"/>
+            <jvmarg line="-ea"/>
+            <classpath refid="run.SiardMetadata.classpath"/>
+        </junit>
+    </target>
+    <target name="Interpreter">
+        <java classname="ai.serenade.treesitter.Interpreter" failonerror="true" fork="yes">
+            <classpath refid="run.Interpreter.classpath"/>
+        </java>
+    </target>
+    <target name="junitreport">
+        <junitreport todir="${junit.output.dir}">
+            <fileset dir="${junit.output.dir}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${junit.output.dir}"/>
+        </junitreport>
+    </target>
     <target name="create_run_jar">
         <jar destfile="${dir.jarfile}/dbspec.jar">
             <manifest>

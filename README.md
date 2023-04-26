@@ -29,6 +29,7 @@ Before you can build the DbSpec interpreter, you need to build a shared library:
 Then build the interpreter as a jar file (dbspec.jar):
 
 ```shell
+ant build-project
 ant create_run_jar
 ```
 
