@@ -37,14 +37,14 @@ public class Interpreter {
 		System.load(FileSystems.getDefault().getPath(TREE_SITTER_LIBRARY).normalize().toAbsolutePath().toString());
 	}
 
-	Interpreter(String filename) {
+	Interpreter(String filename, int verbosityLevel) {
 		try {
 			this.source = getDbSpecString(filename);
 			this.context = new Context();
 			this.connections = new Context();
 			this.dbms = new Dbms();
 			this.siard = new Siard(this.dbms);
-			this.log = new Log(Log.INFO);
+			this.log = new Log(verbosityLevel);
 			loadConfigFile();
 			log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
 			Parser parser = new Parser();
@@ -75,7 +75,8 @@ public class Interpreter {
 		return result;
 	}
 
-	void interpret() {
+	void interpret(int verbosityLevel) {
+		log.setLevel(verbosityLevel);
 		try {
 			Node n = tree.getRootNode();
 			log.write(Log.DEBUG, "Interpretation:\n\n");

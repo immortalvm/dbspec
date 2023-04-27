@@ -44,5 +44,6 @@
 	<classpathentry kind="lib" path="lib/commons-logging-1.1.3.jar"/>
 	<classpathentry kind="lib" path="lib/xdb6.jar"/>
 	<classpathentry kind="lib" path="lib/xmlparserv2.jar"/>
+	<classpathentry kind="lib" path="lib/commons-cli-1.5.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
