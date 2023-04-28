@@ -71,8 +71,8 @@ ant create_run_jar
 
 ## Running
 
-To interpret a DbSpec file:
+To run a DbSpec file:
 
 ```shell
-java -jar dbspec.jar tree-sitter-dbspec/examples/complete_example.dbspec
+java -jar dbspec.jar test.dbspec
 ```
