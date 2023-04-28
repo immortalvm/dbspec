@@ -208,6 +208,7 @@ public class Interpreter {
 		}
 		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
+		Script.execute((String)interpreterString, scriptString);
 		log.write(Log.DEBUG, "%s* Executing using interpreter '%s': '%s'\n", indent(level), (String)interpreterString, scriptString);
 	}
 	
