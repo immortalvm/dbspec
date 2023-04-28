@@ -21,6 +21,15 @@ export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 Apache Ant is required for building the project.
 On Debian and Debian-based distros the package ```ant``` can be installed.
 
+### Docker
+
+Docker is required for running the DBMS used for testing.
+On Debian and Debian-based distros the package ```docker.io``` can be installed.
+
+### PostgreSQL Client
+
+The PostgreSQL client is is required for setting up a test database
+On Debian and Debian-based distros the package ```postgresql-client-14``` can be installed.
 
 ## Preparing
 
@@ -36,6 +45,13 @@ Or clone first and update the submodules then:
 git clone https://github.com/immortalvm/iDA-DbSpec-interpreter.git
 git submodule update --init --recursive  
 # or:  git submodule init && git submodule update
+```
+
+## Setting up PostgreSQL for testing
+
+To run the test script, we need to set up PostgreSQL in Docker container.
+```shell
+docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=geheim -v postgres:/var/lib/postgresql/data postgres:14
 ```
 
 ## Building
