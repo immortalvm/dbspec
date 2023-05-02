@@ -34,8 +34,13 @@ public class Siard {
     			cmd.add("-v");
     		}
     		if (lobFoldername != null) {
-    			cmd.add(String.format("-x=%s", canonicalPath(lobFoldername)));
+    			String canonicalLobFolderName = canonicalPath(lobFoldername);
+    			cmd.add(String.format("-x=%s", canonicalLobFolderName));
     			//	cmd.add(String.format("-m=%s", mimeType));
+    			File theDir = new File(canonicalLobFolderName);
+    			if (!theDir.exists()){
+    			    theDir.mkdirs();
+    			}
     		}
     		cmd.add(String.format("-j=%s", jdbcUrl));
     		cmd.add(String.format("-u=%s", dbUser));
