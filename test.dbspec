@@ -42,12 +42,11 @@ For (id, name) in t:
 
 
 Metadata for dbc:
-	dbname = "mytestdb"
 	description:
 		This is a very interesting database.
 	archiver = "ivar.rummelhoff@nr.no"
 
-	Schema dbo:
+	Schema public:
 		description:
 			The most important schema!
 			The description continues.
@@ -59,14 +58,14 @@ Metadata for dbc:
 			# The other "type level metadata" should be extracted from the database.
 
 		# This has no effect if we include every table in the SIARD file by default.
-		Table product
+		Table category
 
-		Table employee - Main employee table
+		Table staff - Main employee table
 
 		Table customer:
 			description = "The main customer table"
-			Column picture - A compromising picture of the customer
-			Column stuff:
+			Column customer_id - A compromising picture of the customer
+			Column store_id:
 				description = "The 'stuff' column."
 				Field big_stuff:
 					description = "A big field"
@@ -77,11 +76,11 @@ Metadata for dbc:
 
 			Check chk_customer - Ensure that every customer has a valid identity number.
 
-		View current_delivery_issues:
+		View sales_by_store:
 			description = "An aggregate view of current delivery issues"
-			Column customer_name - The full name of the customer
-			Column order_date
-			Column issue_details:
+			Column store - The full name of the customer
+			Column manager
+			Column total_sales:
 				description = "Descr"
 				Field attachments - Blob containing attachments, if any
 
@@ -93,8 +92,8 @@ Metadata for dbc:
 		Body:
 			SELECT g.subject AS fag, g.grade AS karakter
 			FROM public.grades g
-			WHERE g.nin = $${fnr}
-			AND g.place = $${knr};
+			WHERE g.fødselsnummer = ${fnr}
+			AND g.place = ${knr};
 
 
 Output dbc to "my_test.siard"
