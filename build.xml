@@ -312,7 +312,7 @@
             <report format="frames" todir="${junit.output.dir}"/>
         </junitreport>
     </target>
-    <target name="create_run_jar">
+    <target depends="build-project" name="create_run_jar">
         <jar destfile="${dir.jarfile}/dbspec.jar">
             <manifest>
                 <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
