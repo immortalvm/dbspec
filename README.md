@@ -26,6 +26,8 @@ On Debian and Debian-based distros the package ```ant``` can be installed.
 Docker is required for running the DBMS used for testing.
 On Debian and Debian-based distros the package ```docker.io``` can be installed.
 
+Add your user to the group ```docker```.
+
 ### PostgreSQL Client
 
 The PostgreSQL client is is required for setting up a test database
