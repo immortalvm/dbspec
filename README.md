@@ -56,15 +56,10 @@ docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=geheim -v postgr
 
 ## Building
 
-Before you can build the DbSpec interpreter, you need to build a shared library:
+Build the interpreter as a jar file (dbspec.jar):
 
 ```shell
-./build.py -o libjava-tree-sitter tree-sitter-dbspec
-```
-
-Then build the interpreter as a jar file (dbspec.jar):
-
-```shell
+ant clean
 ant create_run_jar
 ```
 
