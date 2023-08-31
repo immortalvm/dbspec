@@ -72,3 +72,14 @@ To run a DbSpec file:
 ```shell
 java -jar dbspec.jar test.dbspec
 ```
+
+## Installing the DbSpec Emacs mode
+
+The DbSpec Emacs mode offers syntax validation.
+It requires Emacs version 29 or higher, and it can be installed as follows:
+
+```shell
+mkdir ~/.emacs.d/tree-sitter
+cp libtree-sitter-dbspec.so ~/.emacs.d/tree-sitter
+cp dbspec-ts-mode.el ~/.emacs.d
+```
