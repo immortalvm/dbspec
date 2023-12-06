@@ -39,10 +39,6 @@
   (setq-local comment-start "#")
   (setq-local comment-end "")
 
-  ;; Electric
-  (setq-local electric-indent-chars
-              (append "{}():;," electric-indent-chars))
-
   ;; Font-lock.
   (setq-local treesit-font-lock-settings dbspec-ts-mode--font-lock-settings)
   (setq-local treesit-font-lock-feature-list '((error)))
