@@ -18,7 +18,59 @@
   :group 'dbspec)
 
 (defvar dbspec-ts-mode--font-lock-settings
+  ;; Since the current DbSpec Tree-sitter grammar was not developed with
+  ;; editor support in mind, this is not great. For instance, many keywords
+  ;; are not registered as such, and comments are essentially treated as
+  ;; insignificant whitespace.
   (treesit-font-lock-rules
+
+   :language 'dbspec
+   :feature 'raw
+   '((raw) @font-lock-preprocessor-face)
+
+   ;; This is a hack in order to color more DbSpec keywords For this to
+   ;; work better, the DbSpec Tree-sitter grammar would have to be
+   ;; modified.
+   :language 'dbspec
+   :feature 'keyword
+   '((connection) @font-lock-keyword-face)
+
+   :language 'dbspec
+   :feature 'interpolation
+   :override t
+   '((interpolation) @font-lock-function-call-face)
+
+   :language 'dbspec
+   :feature 'string
+   :override t
+   '((string) @font-lock-string-face)
+
+   :language 'dbspec
+   :feature 'integer
+   :override t
+   '((integer) @font-lock-number-face)
+
+   :language 'dbspec
+   :feature 'identifier
+   :override t
+   '((identifier) @font-lock-variable-use-face)
+
+   :language 'dbspec
+   :feature 'identifier
+   :override t
+   '((parameter (identifier) @font-lock-variable-set-face)
+     (set (identifier) @font-lock-variable-set-face))
+
+   :language 'dbspec
+   :feature 'short_description
+   '((short_description) @font-lock-doc-face)
+
+   ;; Adding other keywords such as Execute does not work with the current
+   ;; Tree-sitter grammar.
+   :language 'dbspec
+   :feature 'keyword
+   '(["Parameters" "Set" "with" "stripped"] @font-lock-keyword-face)
+
    :language 'dbspec
    :feature 'error
    :override t
@@ -41,7 +93,9 @@
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings dbspec-ts-mode--font-lock-settings)
-  (setq-local treesit-font-lock-feature-list '((error)))
+  (setq-local treesit-font-lock-feature-list
+              '((error identifier short_description keyword raw
+                       interpolation string integer)))
 
   (setq indent-tabs-mode t)
   (setq tab-width 4)
