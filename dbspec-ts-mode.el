@@ -50,7 +50,7 @@
   (setq whitespace-style '(face tabs tab-mark))
 
   (treesit-major-mode-setup)
-  
+
   (whitespace-mode 1))
 
 (if (treesit-ready-p 'dbspec)
