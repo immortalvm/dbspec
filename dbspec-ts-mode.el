@@ -25,39 +25,20 @@
   (treesit-font-lock-rules
 
    :language 'dbspec
-   :feature 'raw
-   '((raw) @font-lock-preprocessor-face)
-
-   ;; This is a hack in order to color more DbSpec keywords For this to
-   ;; work better, the DbSpec Tree-sitter grammar would have to be
-   ;; modified.
-   :language 'dbspec
-   :feature 'keyword
-   '((connection) @font-lock-keyword-face)
-
-   :language 'dbspec
-   :feature 'interpolation
-   :override t
-   '((interpolation) @font-lock-function-call-face)
-
-   :language 'dbspec
    :feature 'string
-   :override t
-   '((string) @font-lock-string-face)
+   '((string "\"" @font-lock-string-face)
+     ((string_content) @font-lock-string-face))
 
    :language 'dbspec
    :feature 'integer
-   :override t
    '((integer) @font-lock-number-face)
 
    :language 'dbspec
    :feature 'identifier
-   :override t
    '((identifier) @font-lock-variable-use-face)
 
    :language 'dbspec
    :feature 'identifier
-   :override t
    '((parameter (identifier) @font-lock-variable-set-face)
      (set (identifier) @font-lock-variable-set-face))
 
@@ -65,16 +46,29 @@
    :feature 'short_description
    '((short_description) @font-lock-doc-face)
 
-   ;; Adding other keywords such as Execute does not work with the current
-   ;; Tree-sitter grammar.
+   :language 'dbspec
+   :feature 'interpolation
+   :override 'keep
+   '((interpolation) @font-lock-function-call-face)
+
+   :language 'dbspec
+   :feature 'raw
+   :override 'keep
+   '((raw) @default)
+
+   ;; This is a hack: In order to compensate for limitations in the
+   ;; current tree-sitter-dbspec, we assume that everything is a keyword
+   ;; by default.
    :language 'dbspec
    :feature 'keyword
-   '(["Parameters" "Set" "with" "stripped" "Log"] @font-lock-keyword-face)
+   :override 'keep
+   '((_) @font-lock-keyword-face)
 
    :language 'dbspec
    :feature 'error
    :override t
-   '((ERROR) @font-lock-warning-face))
+   '((ERROR) @font-lock-warning-face)
+   )
   "Font-lock settings for DbSpec.")
 
 (defun dbspec-ts-indent-line-function ()
@@ -92,24 +86,32 @@
 
   (treesit-parser-create 'dbspec)
 
-  ;; Comments.
-  (setq-local comment-start "#")
-  (setq-local comment-end "")
-
   ;; Font-lock.
   (setq-local treesit-font-lock-settings dbspec-ts-mode--font-lock-settings)
   (setq-local treesit-font-lock-feature-list
               '((error identifier short_description keyword raw
                        interpolation string integer)))
 
+  (setq-local font-lock-keywords
+              '(("^\t*\\(#.*\\)$" 1 'font-lock-comment-face prepend)))
+
   (setq-local indent-tabs-mode t)
   (setq-local tab-width dbspec-ts-mode-indent-offset)
-  (setq-local comment-start "#")
-  (setq-local comment-style "plain")
-  (setq-local whitespace-style '(face tabs tab-mark))
   (setq-local indent-line-function 'dbspec-ts-indent-line-function)
 
+  ;; Comments.
+  (setq-local comment-start "#")
+  (setq-local comment-end "")
+  (setq-local comment-padding " ")
+  (setq-local comment-style "plain")
+
   (treesit-major-mode-setup)
+
+  ;; This is another hack in order to compensate for limitations in the
+  ;; current tree-sitter grammar. It must come after treesit-major-mode-setup.
+  (font-lock-add-keywords nil '(("^\t*\\(#.*\\)$" 1 '(font-lock-comment-face bold) prepend)))
+
+  (setq-local whitespace-style '(face tabs tab-mark))
   (whitespace-mode 1))
 
 (if (treesit-ready-p 'dbspec)
