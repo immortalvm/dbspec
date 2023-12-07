@@ -30,6 +30,7 @@ public class Script {
 			Files.setPosixFilePermissions(tempFile.toPath(), PosixFilePermissions.fromString("rwx------"));
 			// Execute script and collect output
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
+			process.exitValue();
 			if (process.exitValue() != 0) {
 				throw new ScriptError(interpreter);
 			}
