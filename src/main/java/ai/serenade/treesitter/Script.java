@@ -30,6 +30,9 @@ public class Script {
 			Files.setPosixFilePermissions(tempFile.toPath(), PosixFilePermissions.fromString("rwx------"));
 			// Execute script and collect output
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
+			if (process.exitValue() != 0) {
+				throw new ScriptError(interpreter);
+			}
 			InputStream is = process.getInputStream();
 			InputStreamReader isr = new InputStreamReader(is);
 			int ch;
@@ -37,7 +40,7 @@ public class Script {
 				result += Character.toString(ch);
 			}
 		} catch (IOException e) {
-			return "<script error>";
+			throw new ScriptError(interpreter);
 		}
 		return result;
 	}

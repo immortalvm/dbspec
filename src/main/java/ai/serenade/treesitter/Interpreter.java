@@ -83,6 +83,8 @@ public class Interpreter {
 			interpretSourceFile(n, 0, context);
 		} catch (Exception e) {
 			e.printStackTrace();
+		} catch (ScriptError e) {
+			System.out.format("Error in script executed by %s\n", e.interpreter);
 		}
 	}
 
