@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.InterruptedException;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermissions;
 
@@ -30,7 +31,7 @@ public class Script {
 			Files.setPosixFilePermissions(tempFile.toPath(), PosixFilePermissions.fromString("rwx------"));
 			// Execute script and collect output
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
-			process.exitValue();
+			process.waitFor();
 			if (process.exitValue() != 0) {
 				throw new ScriptError(interpreter);
 			}
@@ -41,6 +42,8 @@ public class Script {
 				result += Character.toString(ch);
 			}
 		} catch (IOException e) {
+			throw new ScriptError(interpreter);
+		} catch (InterruptedException e) {
 			throw new ScriptError(interpreter);
 		}
 		return result;
