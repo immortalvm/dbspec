@@ -6,3 +6,4 @@ build
 *.log
 /bin/
 dbspec.jar
+*.elc
