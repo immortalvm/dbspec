@@ -10,7 +10,7 @@
 (declare-function treesit-node-child-by-field-name "treesit.c")
 
 
-(defcustom dbspec-ts-mode-indent-offset 2
+(defcustom dbspec-ts-mode-indent-offset 4
   "Number of spaces for each indentation step in `dbspec-ts-mode'."
   :version "29.1"
   :type 'integer
@@ -69,13 +69,18 @@
    ;; Tree-sitter grammar.
    :language 'dbspec
    :feature 'keyword
-   '(["Parameters" "Set" "with" "stripped"] @font-lock-keyword-face)
+   '(["Parameters" "Set" "with" "stripped" "Log"] @font-lock-keyword-face)
 
    :language 'dbspec
    :feature 'error
    :override t
    '((ERROR) @font-lock-warning-face))
   "Font-lock settings for DbSpec.")
+
+(defun dbspec-ts-indent-line-function ()
+  (save-excursion
+    (beginning-of-line)
+    (insert-before-markers ?\t)))
 
 ;;;###autoload
 (define-derived-mode dbspec-ts-mode prog-mode "DbSpec"
@@ -97,14 +102,14 @@
               '((error identifier short_description keyword raw
                        interpolation string integer)))
 
-  (setq indent-tabs-mode t)
-  (setq tab-width 4)
-  (setq comment-start "#")
-  (setq comment-style "plain")
-  (setq whitespace-style '(face tabs tab-mark))
+  (setq-local indent-tabs-mode t)
+  (setq-local tab-width dbspec-ts-mode-indent-offset)
+  (setq-local comment-start "#")
+  (setq-local comment-style "plain")
+  (setq-local whitespace-style '(face tabs tab-mark))
+  (setq-local indent-line-function 'dbspec-ts-indent-line-function)
 
   (treesit-major-mode-setup)
-
   (whitespace-mode 1))
 
 (if (treesit-ready-p 'dbspec)
