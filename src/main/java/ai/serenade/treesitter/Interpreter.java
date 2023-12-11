@@ -285,10 +285,14 @@ public class Interpreter {
 			throw new SemanticError("SIARD transfer failed: " + e.getReason());
 		}
 		MdObject md = (MdObject)connections.getValue(connectionString);
-		log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
-		SiardMetadata.updateMetadata((String)fileString, md);
-		log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), (String)roaeFileString);
-		RoaeMetadata.updateMetadata(roaeFileString, md);
+                if (md != null) {
+                    log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
+                    SiardMetadata.updateMetadata((String)fileString, md);
+                    log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), (String)roaeFileString);
+                    RoaeMetadata.updateMetadata(roaeFileString, md);
+                } else {
+                    log.write(Log.WARNING, "%s* SIARD metadata not found\n", indent(level));
+                }
 	}
 
 	String interpretSiardMetadataField(String fieldName, Node n, int level, Context ctx, MdObject parent) {
