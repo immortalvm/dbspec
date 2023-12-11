@@ -81,10 +81,17 @@ public class Interpreter {
 			Node n = tree.getRootNode();
 			log.write(Log.DEBUG, "Interpretation:\n\n");
 			interpretSourceFile(n, 0, context);
-		} catch (Exception e) {
+		} catch (AstError e) {
+			System.out.format("AST error:\n");
+			e.printStackTrace();
+		} catch (SemanticError e) {
+			System.out.format("Semantic error: %s\n", e.reason);
 			e.printStackTrace();
 		} catch (ScriptError e) {
 			System.out.format("Error in script executed by %s\n", e.interpreter);
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
