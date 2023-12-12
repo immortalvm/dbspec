@@ -35,12 +35,8 @@ public class Interpreter {
 	Log log;
 	Properties config = new Properties();
 	final static String CONFIG_FILENAME = "dbspec.conf";
-	final static String TREE_SITTER_LIBRARY = "../iDA-DbSpec-interpreter/libjava-tree-sitter.so";
+	final static String TREE_SITTER_LIBRARY = "libjava-tree-sitter.so";
 	
-	static {
-		System.load(FileSystems.getDefault().getPath(TREE_SITTER_LIBRARY).normalize().toAbsolutePath().toString());
-	}
-
 	Interpreter(String filename, int verbosityLevel) {
 		try {
 			this.jarDir = getJarDir();
@@ -50,6 +46,8 @@ public class Interpreter {
 			this.dbms = new Dbms();
 			this.siard = new Siard(this.dbms, this.jarDir);
 			this.log = new Log(verbosityLevel);
+			File treesitterLibFile = new File(jarDir, TREE_SITTER_LIBRARY);
+			System.load(treesitterLibFile.getAbsolutePath());
 			loadConfigFile();
 			log.write(Log.DEBUG, "--- JAR path: %s\n\n", jarDir);
 			log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
