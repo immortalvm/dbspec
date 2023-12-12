@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileSystems;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -28,6 +31,7 @@ public class Interpreter {
 	Context connections;
 	Dbms dbms;
 	Siard siard;
+	File jarDir;
 	Log log;
 	Properties config = new Properties();
 	final static String CONFIG_FILENAME = "dbspec.conf";
@@ -39,13 +43,15 @@ public class Interpreter {
 
 	Interpreter(String filename, int verbosityLevel) {
 		try {
+			this.jarDir = getJarDir();
 			this.source = getDbSpecString(filename);
 			this.context = new Context();
 			this.connections = new Context();
 			this.dbms = new Dbms();
-			this.siard = new Siard(this.dbms);
+			this.siard = new Siard(this.dbms, this.jarDir);
 			this.log = new Log(verbosityLevel);
 			loadConfigFile();
+			log.write(Log.DEBUG, "--- JAR path: %s\n\n", jarDir);
 			log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
 			Parser parser = new Parser();
 			parser.setLanguage(Languages.dbspec());
@@ -56,6 +62,8 @@ public class Interpreter {
 			log.write(Log.FATAL, "File not found\n");
 		} catch (UnsupportedEncodingException e) {
 			log.write(Log.FATAL, "Unsupported encoding\n");
+		} catch (JarPathError e) {
+			log.write(Log.FATAL, "Could not find path of JAR file\n");
 		}
 	}
 	
@@ -67,6 +75,17 @@ public class Interpreter {
 		}
 	}
 
+	File getJarDir() throws JarPathError {
+		try {
+			String thisClassesResourcePath = Interpreter.class.getName().replace('.', '/') + ".class";
+			String path = ClassLoader.getSystemResource(thisClassesResourcePath).getPath();
+			File file = new File(new URI(path.substring(0, path.lastIndexOf("jar!") + 3)));
+			return file.getParentFile();
+		} catch (Exception e) {
+			throw new JarPathError();
+		}
+	}
+	
 	String getDbSpecString(String filename) throws FileNotFoundException {
 		File file = new File(filename);
 		Scanner s = new Scanner(file).useDelimiter("\\Z");

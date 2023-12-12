@@ -13,13 +13,16 @@ public class Siard {
 	public static boolean VIEWS_AS_TABLES = false; // TODO: Does this make sense?
 	public static long PROCESS_TIMEOUT_SECONDS = 10; 
 	Dbms dbms;
+	File jarDir;
 
-	public Siard(Dbms dbms) {
+	public Siard(Dbms dbms, File jarDir) {
 		this.dbms = dbms;
+		this.jarDir = jarDir;
 	}
 	
 	public void transfer(Connection conn, String siardFilename, String lobFoldername) throws SiardError {
         try {
+        	File siardJarFile = new File(new File(jarDir, "lib"), "siardcmd.jar");
     		String mimeType = ""; // TODO: what should be the value of mimeType
     		String jdbcUrl = conn.getMetaData().getURL().toString();
     		String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
@@ -27,7 +30,7 @@ public class Siard {
     		List<String> cmd = new ArrayList<String>();
     		cmd.add("java");
     		cmd.add("-cp");
-    		cmd.add("lib/siardcmd.jar");
+    		cmd.add(siardJarFile.getAbsolutePath());
     		cmd.add("ch.admin.bar.siard2.cmd.SiardFromDb");
     		cmd.add("-o");
     		if (VIEWS_AS_TABLES) {
