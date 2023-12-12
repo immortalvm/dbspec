@@ -594,7 +594,7 @@ public class Interpreter {
 			throw new SemanticError("Left side of comparison is not integer");
 		}
 		if (!(rightValue instanceof BigInteger)) {
-			throw new SemanticError("Left side of comparison is not integer");
+			throw new SemanticError("Right side of comparison is not integer");
 		}
 		int comparisonValue = ((BigInteger)leftValue).compareTo((BigInteger)rightValue);
 		if (operatorString.equals("==")) {
@@ -654,7 +654,7 @@ public class Interpreter {
 				ResultSet rs = (ResultSet)leftValue;
 				try {
 					rs.last();
-					return rs.getRow();					
+					return BigInteger.valueOf(rs.getRow());
 				} catch (SQLException e) {
 					throw new SemanticError("Error in ResultSet.");
 				}
