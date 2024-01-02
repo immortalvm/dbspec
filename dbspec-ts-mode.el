@@ -109,7 +109,7 @@
 
   ;; This is another hack in order to compensate for limitations in the
   ;; current tree-sitter grammar. It must come after treesit-major-mode-setup.
-  (font-lock-add-keywords nil '(("^\t*\\(#.*\\)$" 1 '(font-lock-comment-face bold) prepend)))
+  (font-lock-add-keywords nil '(("^\t*\\(#.*\\)$" 1 '(font-lock-doc-markup-face default) prepend)))
 
   (setq-local whitespace-style '(face tabs tab-mark))
   (whitespace-mode 1))
