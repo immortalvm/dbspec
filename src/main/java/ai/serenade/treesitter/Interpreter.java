@@ -107,6 +107,9 @@ public class Interpreter {
 		} catch (ScriptError e) {
 			System.out.format("Error in script executed by %s\n", e.interpreter);
 			e.printStackTrace();
+		} catch (AssertionFailure e) {
+			System.out.format("Assertion failed at positon %d to %d\n", e.startPos, e.endPos);
+			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -193,6 +196,9 @@ public class Interpreter {
 	void interpretAssert(Node n, int level, Context ctx) {
 		boolean comparisonValue = interpretComparison(n.getChild(0), level, ctx);
 		log.write(Log.DEBUG, "%s* Assertion: '%s'\n", indent(level), comparisonValue);
+		if (!comparisonValue) {
+			throw new AssertionFailure(n.getStartByte(), n.getEndByte());
+		}
 	}
 
 	void interpretSet(Node n, int level, Context ctx) {
