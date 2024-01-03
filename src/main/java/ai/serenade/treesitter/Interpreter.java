@@ -556,6 +556,7 @@ public class Interpreter {
 		try {
 			ResultSetMetaData rsmeta = rs.getMetaData();
 			int ncols = Math.min(variablesStrings.size(), rsmeta.getColumnCount());
+			rs.beforeFirst();
 			while (rs.next()) {
 				for (int i = 0; i < ncols; i++) {
 					String colValue = rs.getString(i + 1);
