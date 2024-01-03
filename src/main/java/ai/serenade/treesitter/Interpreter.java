@@ -763,10 +763,21 @@ public class Interpreter {
 
 	String interpretRaw(Node n, int level, Context ctx) {
 		String result = ""; 
+        int trailingNewlines = 0;
 		for (Node c : n.getChildren()) {
 			if (c.getType().equals("raw_content")) {
-				result += interpretRawContent(c, level + 1);
-			} else if (c.getType().equals("interpolation")) {
+                String rc = interpretRawContent(c, level + 1);
+				result += rc;
+                int len = rc.length();
+                int end = len;
+                while (end > 0 && rc.charAt(end - 1) == '\n') {
+                    end--;
+                }
+                trailingNewlines = end == 0 ? trailingNewlines + len : len - end;
+                continue;
+			}
+            trailingNewlines = 0;
+            if (c.getType().equals("interpolation")) {
 				result += interpretInterpolation(c, level + 1, ctx);
 			} else if (c.getType().equals("interpolation2")) {
 				result += interpretInterpolation2(c, level + 1, ctx);
@@ -774,7 +785,10 @@ public class Interpreter {
 				throw new AstError();
 			}
 		}
-		return result;
+        // Trim trailing newlines stemming from newlines after raw.
+        // This is an issue since we allow raw sections to continue after
+        // non-indented empty lines.
+		return result.substring(0, result.length() - trailingNewlines);
 	}
 	
 	// Methods corresponding to terminal AST nodes
