@@ -676,8 +676,11 @@ public class Interpreter {
 			if (rightOperator.equals("size")) {
 				ResultSet rs = (ResultSet)leftValue;
 				try {
+					int currentRow = rs.getRow();
 					rs.last();
-					return BigInteger.valueOf(rs.getRow());
+					int lastRow = rs.getRow();
+					rs.absolute(currentRow);
+					return BigInteger.valueOf(lastRow);
 				} catch (SQLException e) {
 					throw new SemanticError("Error in ResultSet.");
 				}
