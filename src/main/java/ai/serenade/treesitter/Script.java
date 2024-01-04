@@ -14,7 +14,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 public class Script {
 	final static String EXEC_MARKER = "#!";
 
-	public static String execute(String interpreter, String script) {
+	public static String execute(Node n, String interpreter, String script) {
 		String result = "";
 		try {
 			// Create script and make it executable
@@ -33,7 +33,7 @@ public class Script {
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
 			process.waitFor();
 			if (process.exitValue() != 0) {
-				throw new ScriptError(interpreter);
+				throw new ScriptError(n, interpreter);
 			}
 			InputStream is = process.getInputStream();
 			InputStreamReader isr = new InputStreamReader(is);
@@ -42,9 +42,9 @@ public class Script {
 				result += Character.toString(ch);
 			}
 		} catch (IOException e) {
-			throw new ScriptError(interpreter);
+			throw new ScriptError(n, interpreter);
 		} catch (InterruptedException e) {
-			throw new ScriptError(interpreter);
+			throw new ScriptError(n, interpreter);
 		}
 		return result;
 	}

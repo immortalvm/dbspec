@@ -16,35 +16,23 @@ public class Dbms {
 		connectionParameters = new HashMap<Connection,Properties>();
 	}
 	
-	public Connection connect(String url, Context ctx) {
+	public Connection connect(String url, Context ctx) throws SQLException {
 		Properties parameters = new Properties();
 		parameters.put("user", ctx.getValue("user"));
 		parameters.put("password", ctx.getValue("password"));
-		try {
-			Connection c = DriverManager.getConnection(url, parameters);
-			connectionParameters.put(c, parameters);
-			return c;
-		} catch (SQLException e) {
-			return null;
-		}
+		Connection c = DriverManager.getConnection(url, parameters);
+		connectionParameters.put(c, parameters);
+		return c;
 	}
 
-	public int executeSqlUpdate(Connection connection, String sql) {
-		try {
-			Statement s = connection.createStatement();
-			return s.executeUpdate(sql);
-		} catch (SQLException e) {
-			return 0;
-		}
+	public int executeSqlUpdate(Connection connection, String sql) throws SQLException {
+		Statement s = connection.createStatement();
+		return s.executeUpdate(sql);
 	}
 
-	public ResultSet executeSqlQuery(Connection connection, String sql) {
-		try {
-			Statement s = connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			return s.executeQuery(sql);
-		} catch (SQLException e) {
-			return null;
-		}
+	public ResultSet executeSqlQuery(Connection connection, String sql) throws SQLException {
+		Statement s = connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+		return s.executeQuery(sql);
 	}
 
 }

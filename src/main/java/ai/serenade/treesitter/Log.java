@@ -16,7 +16,11 @@ public class Log {
 	void setLevel(int level) {
 		this.level = level;
 	}
-	
+
+    int getLevel() {
+        return level;
+    }
+
 	public void write(int level, String message, Object... args) {
 		if (level <= this.level) {
 			System.out.format(message, (Object[])args);

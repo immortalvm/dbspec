@@ -92,6 +92,28 @@ public class Interpreter {
 		return result;
 	}
 
+    void printNode(Node n) {
+        int start = n.getStartByte();
+        int end = n.getEndByte();
+        while (start < end && source.charAt(end - 1) == '\n') {
+            end--;
+        }
+        int line = 0;
+        int pos = -1;
+        do {
+            line++;
+            pos = source.indexOf('\n', pos + 1);
+        } while (pos < start && pos != -1);
+        do {
+            if (pos == -1 || pos > end) {
+                pos = end;
+            }
+            System.out.format("%d:\t%s\n", line++, source.substring(start, pos));
+            start = pos + 1;
+            pos = source.indexOf('\n', start);
+        } while (start < end);
+    }
+
 	void interpret(int verbosityLevel) {
 		log.setLevel(verbosityLevel);
 		try {
@@ -99,17 +121,35 @@ public class Interpreter {
 			log.write(Log.DEBUG, "Interpretation:\n\n");
 			interpretSourceFile(n, 0, context);
 		} catch (AstError e) {
-			System.out.format("AST error:\n");
-			e.printStackTrace();
+			System.out.format("AST error\n");
+            printNode(e.node);
+            if (log.getLevel() >= Log.DEBUG) {
+                e.printStackTrace();
+            }
 		} catch (SemanticError e) {
 			System.out.format("Semantic error: %s\n", e.reason);
-			e.printStackTrace();
+            printNode(e.node);
+            if (log.getLevel() >= Log.DEBUG) {
+                e.printStackTrace();
+            }
+		} catch (SqlError e) {
+			System.out.format("SQL error - %s\n", e.reason);
+            printNode(e.node);
+            if (log.getLevel() >= Log.DEBUG) {
+                e.printStackTrace();
+            }
 		} catch (ScriptError e) {
 			System.out.format("Error in script executed by %s\n", e.interpreter);
-			e.printStackTrace();
+            printNode(e.node);
+            if (log.getLevel() >= Log.DEBUG) {
+                e.printStackTrace();
+            }
 		} catch (AssertionFailure e) {
-			System.out.format("Assertion failed at positon %d to %d\n", e.startPos, e.endPos);
-			e.printStackTrace();
+			System.out.format("Assertion failed\n");
+            printNode(e.node);
+            if (log.getLevel() >= Log.DEBUG) {
+                e.printStackTrace();
+            }
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -142,7 +182,7 @@ public class Interpreter {
 			if (c.getType().equals("parameter")) {
 				interpretParameter(c, level + 1, ctx);
 			} else {
-				throw new AstError();
+				throw new AstError(n);
 			}
 		}
 	}
@@ -183,7 +223,7 @@ public class Interpreter {
 		} else if (n.getType().equals("conditional")) {
 			interpretConditional(n, level + 1, ctx);
 		} else {
-			throw new AstError();
+			throw new AstError(n);
 		}
 	}
 
@@ -197,7 +237,7 @@ public class Interpreter {
 		boolean comparisonValue = interpretComparison(n.getChild(0), level, ctx);
 		log.write(Log.DEBUG, "%s* Assertion: '%s'\n", indent(level), comparisonValue);
 		if (!comparisonValue) {
-			throw new AssertionFailure(n.getStartByte(), n.getEndByte());
+			throw new AssertionFailure(n);
 		}
 	}
 
@@ -212,7 +252,7 @@ public class Interpreter {
 			variableValue = interpretExpression(value, level, ctx); 
 		}
 		if (variableValue == null) {
-			throw new AstError();
+			throw new AstError(n);
 		}
 		log.write(Log.DEBUG, "%s* Set %s = '%s'\n", indent(level), variableName, variableValue);
 		ctx.setValue(variableName, variableValue);
@@ -236,11 +276,11 @@ public class Interpreter {
 		Node interpreter = n.getChildByFieldName("interpreter");
 		Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
 		if (!(interpreterString instanceof String)) {
-			throw new SemanticError("Interpreter is not a string");
+			throw new SemanticError(n, "Interpreter is not a string");
 		}
 		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
-		Script.execute((String)interpreterString, scriptString);
+		Script.execute(n, (String)interpreterString, scriptString);
 		log.write(Log.DEBUG, "%s* Executing using interpreter '%s': '%s'\n", indent(level), (String)interpreterString, scriptString);
 	}
 	
@@ -248,11 +288,11 @@ public class Interpreter {
 		Node interpreter = n.getChildByFieldName("interpreter");
 		Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
 		if (!(interpreterString instanceof String)) {
-			throw new SemanticError("Interpreter is not a string");
+			throw new SemanticError(n, "Interpreter is not a string");
 		}
 		Node script = n.getChildByFieldName("script");
 		String scriptString = interpretRaw(script, level + 1, ctx);
-		String scriptResult = Script.execute((String)interpreterString, scriptString); 
+		String scriptResult = Script.execute(n, (String)interpreterString, scriptString); 
 		log.write(Log.DEBUG, "%s* Executing using interpreter %s: '%s'\n", indent(level), (String)interpreterString, scriptString);
 		return scriptResult;
 	}
@@ -261,12 +301,16 @@ public class Interpreter {
 		Node url = n.getChildByFieldName("url");
 		Object urlString = interpretBasicExpression(url, level, ctx);
 		if (!(urlString instanceof String)) {
-			throw new SemanticError("URL is not a string");
+			throw new SemanticError(n, "URL is not a string");
 		}
 		Node properties = n.getChildByFieldName("properties");
 		log.write(Log.DEBUG, "%s* connection: %s\n", indent(level), (String)urlString);
 		Context connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
-		return dbms.connect((String)urlString, connectionContext);
+        try {
+            return dbms.connect((String)urlString, connectionContext);
+		} catch (SQLException e) {
+			throw new SqlError(n, e.getMessage());
+		}
 	}
 	
 	void interpretExecuteSql(Node n, int level, Context ctx) {
@@ -274,12 +318,16 @@ public class Interpreter {
 		String connectionString = interpretIdentifier(connection, level + 1);
 		Object dbmsConnection = ctx.getValue(connectionString);
 		if (!(dbmsConnection instanceof Connection)) {
-			throw new SemanticError("Connection variable does not refer to an SQL connection");
+			throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
 		}
 		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		log.write(Log.DEBUG, "%s* Executing SQL on connection %s: '%s'\n", indent(level), connectionString, sqlString);
-		dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
+        try {
+            dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
+		} catch (SQLException e) {
+			throw new SqlError(n, e.getMessage());
+		}
 	}
 	
 	ResultSet interpretQuery(Node n, int level, Context ctx) {
@@ -287,12 +335,16 @@ public class Interpreter {
 		String connectionString = interpretIdentifier(connection, level + 1);
 		Object dbmsConnection = ctx.getValue(connectionString);
 		if (!(dbmsConnection instanceof Connection)) {
-			throw new SemanticError("Connection variable does not refer to an SQL connection");
+			throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
 		}
 		Node sql = n.getChildByFieldName("sql");
 		String sqlString = interpretRaw(sql, level + 1, ctx);
 		log.write(Log.DEBUG, "%s* Executing SQL query on connection %s: '%s'\n", indent(level), connectionString, sqlString);
-		return dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
+        try {
+            return dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
+		} catch (SQLException e) {
+			throw new SqlError(n, e.getMessage());
+		}
 	}
 	
 	void interpretSiardOutput(Node n, int level, Context ctx) {
@@ -300,19 +352,19 @@ public class Interpreter {
 		String connectionString = interpretIdentifier(connection, level + 1);
 		Object dbmsConnection = ctx.getValue(connectionString);
 		if (!(dbmsConnection instanceof Connection)) {
-			throw new SemanticError("Connection variable does not refer to an SQL connection");
+			throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
 		}
 		Node file = n.getChildByFieldName("file");
 		Object fileString = interpretBasicExpression(file, level, ctx);
 		if (!(fileString instanceof String)) {
-			throw new SemanticError("Filename is not a string");
+			throw new SemanticError(n, "Filename is not a string");
 		}
 	    String roaeFileString = ((String)fileString).indexOf('.') == -1 ? (String)fileString + ".roae" : ((String)fileString).replaceAll("\\.[^.]*$", ".roae");
 		log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, (String)fileString);
 		try {
 			siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
 		} catch (SiardError e) {
-			throw new SemanticError("SIARD transfer failed: " + e.getReason());
+			throw new SemanticError(n, "SIARD transfer failed: " + e.getReason());
 		}
 		MdObject md = (MdObject)connections.getValue(connectionString);
                 if (md != null) {
@@ -338,7 +390,7 @@ public class Interpreter {
 			fieldString = interpretBasicExpression(field, level, ctx);
 		}
 		if (!(fieldString instanceof String)) {
-			throw new SemanticError("Siard field " + fieldName + " is not a string");
+			throw new SemanticError(n, "Siard field " + fieldName + " is not a string");
 		}
 		log.write(Log.DEBUG, "%s* SIARD metadata %s: %s\n", indent(level), fieldName, (String)fieldString);
 		MdObject md = new MdObject(MdType.INFO, fieldName, (String)fieldString);
@@ -506,7 +558,7 @@ public class Interpreter {
 			titleString = interpretBasicExpression(title, level, ctx);
 		}
 		if (!(titleString instanceof String)) {
-			throw new SemanticError("Title is not a string");
+			throw new SemanticError(n, "Title is not a string");
 		}
 		MdObject md = new MdObject(MdType.COMMAND, "", (String)titleString);
 		parent.add(md);
@@ -526,7 +578,7 @@ public class Interpreter {
 			if (c.getType().equals("parameter")) {
 				interpretCommandParameter(c, level + 1, ctx, parent);
 			} else {
-				throw new AstError();
+				throw new AstError(n);
 			}
 		}
 	}
@@ -569,7 +621,7 @@ public class Interpreter {
 				interpretStatementBlock(body, level + 1, ctx);
 			}
 		} catch (SQLException e) {
-			throw new SemanticError("Error in ResultSet.");
+			throw new SemanticError(n, "Error in ResultSet.");
 		}
 	}
 
@@ -579,7 +631,7 @@ public class Interpreter {
 			if (c.getType().equals("identifier")) {
 				variables.add(interpretIdentifier(c, level + 1));
 			} else {
-				throw new AstError();
+				throw new AstError(n);
 			}
 		}
 		return variables;
@@ -615,10 +667,10 @@ public class Interpreter {
 		Node right = n.getChildByFieldName("right");
 		Object rightValue = interpretBasicExpression(right, level + 1, ctx);
 		if (!(leftValue instanceof BigInteger)) {
-			throw new SemanticError("Left side of comparison is not integer");
+			throw new SemanticError(n, "Left side of comparison is not integer");
 		}
 		if (!(rightValue instanceof BigInteger)) {
-			throw new SemanticError("Right side of comparison is not integer");
+			throw new SemanticError(n, "Right side of comparison is not integer");
 		}
 		int comparisonValue = ((BigInteger)leftValue).compareTo((BigInteger)rightValue);
 		if (operatorString.equals("==")) {
@@ -634,7 +686,7 @@ public class Interpreter {
 		} else if (operatorString.equals(">=")) {
 			return comparisonValue > -1;
 		} else {
-			throw new SemanticError("Unknown comparison operator: " + operatorString);
+			throw new SemanticError(n, "Unknown comparison operator: " + operatorString);
 		}
 	}
 	
@@ -649,7 +701,7 @@ public class Interpreter {
 		} else if (n.getType().equals("dot_expression")) {
 			return interpretDotExpression(n, level + 1, ctx);
 		} else {
-			throw new AstError();
+			throw new AstError(n);
 		}
 	}
 	
@@ -671,7 +723,7 @@ public class Interpreter {
 			} else if (rightOperator.equals("as_integer")) {
 				return new BigInteger((String)leftValue);
 			} else {
-				throw new SemanticError("Unsupported dot expression");
+				throw new SemanticError(n, "Unsupported dot expression");
 			}
 		} else if (leftValue instanceof ResultSet) {
 			if (rightOperator.equals("size")) {
@@ -683,13 +735,13 @@ public class Interpreter {
 					rs.absolute(currentRow);
 					return BigInteger.valueOf(lastRow);
 				} catch (SQLException e) {
-					throw new SemanticError("Error in ResultSet.");
+					throw new SemanticError(n, "Error in ResultSet.");
 				}
 			} else {
-				throw new SemanticError("Unsupported dot expression");
+				throw new SemanticError(n, "Unsupported dot expression");
 			}
 		} else {
-			throw new SemanticError("Illegal type in dot expression");
+			throw new SemanticError(n, "Illegal type in dot expression");
 		} 
 	}
 	
@@ -703,7 +755,7 @@ public class Interpreter {
 			} else if (c.getType().equals("string_content")) {
 				result += interpretStringContent(c, level + 1);
 			} else {
-				throw new AstError();
+				throw new AstError(n);
 			}
 		}
 		return result;
@@ -729,7 +781,7 @@ public class Interpreter {
 		} else if (interpolatedObject instanceof BigInteger) {
 			return String.valueOf((BigInteger)interpolatedObject);
 		} else {
-			throw new SemanticError("Interpolation must be String or BigInteger");
+			throw new SemanticError(n, "Interpolation must be String or BigInteger");
 		}
 	}
 	
@@ -739,7 +791,7 @@ public class Interpreter {
 			if (c.getType().equals("key_value_pair")) {
 				interpretKeyValuePair(c, level + 1, keyValuePairs, ctx);
 			} else {
-				throw new AstError();
+				throw new AstError(n);
 			}
 		}
 		return keyValuePairs;
@@ -756,7 +808,7 @@ public class Interpreter {
 			valueString = interpretBasicExpression(value, level, ctx);
 		}
 		if (!(valueString instanceof String)) {
-			throw new SemanticError("Value is not a string");
+			throw new SemanticError(n, "Value is not a string");
 		}
 		keyValuePairs.setValue(keyString, (String)valueString);
 	}
@@ -782,7 +834,7 @@ public class Interpreter {
 			} else if (c.getType().equals("interpolation2")) {
 				result += interpretInterpolation2(c, level + 1, ctx);
 			} else {
-				throw new AstError();
+				throw new AstError(n);
 			}
 		}
         // Trim trailing newlines stemming from newlines after raw.
