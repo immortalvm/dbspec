@@ -33,7 +33,7 @@ public class Script {
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
 			process.waitFor();
 			if (process.exitValue() != 0) {
-				throw new ScriptError(n, interpreter);
+				throw new ScriptError(n, "Exit value: " + process.exitValue());
 			}
 			InputStream is = process.getInputStream();
 			InputStreamReader isr = new InputStreamReader(is);
@@ -42,9 +42,9 @@ public class Script {
 				result += Character.toString(ch);
 			}
 		} catch (IOException e) {
-			throw new ScriptError(n, interpreter);
+			throw new ScriptError(n, e.getMessage());
 		} catch (InterruptedException e) {
-			throw new ScriptError(n, interpreter);
+			throw new ScriptError(n, "Interrupted");
 		}
 		return result;
 	}

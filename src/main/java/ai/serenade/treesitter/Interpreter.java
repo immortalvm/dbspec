@@ -139,7 +139,7 @@ public class Interpreter {
                 e.printStackTrace();
             }
 		} catch (ScriptError e) {
-			System.out.format("Error in script executed by %s\n", e.interpreter);
+			System.out.format("Error in script - %s\n", e.reason);
             printNode(e.node);
             if (log.getLevel() >= Log.DEBUG) {
                 e.printStackTrace();
