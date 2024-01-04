@@ -71,11 +71,6 @@
    )
   "Font-lock settings for DbSpec.")
 
-(defun dbspec-ts-indent-line-function ()
-  (save-excursion
-    (beginning-of-line)
-    (insert-before-markers ?\t)))
-
 ;;;###autoload
 (define-derived-mode dbspec-ts-mode prog-mode "DbSpec"
   "Major mode for editing DbSpec, powered by tree-sitter."
@@ -97,7 +92,7 @@
 
   (setq-local indent-tabs-mode t)
   (setq-local tab-width dbspec-ts-mode-indent-offset)
-  (setq-local indent-line-function 'dbspec-ts-indent-line-function)
+  (setq-local indent-line-function 'indent-to-left-margin)
 
   ;; Comments.
   (setq-local comment-start "#")
