@@ -33,7 +33,13 @@ public class Script {
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
 			process.waitFor();
 			if (process.exitValue() != 0) {
-				throw new ScriptError(n, "Exit value: " + process.exitValue());
+                InputStream es = process.getErrorStream();
+                InputStreamReader esr = new InputStreamReader(es);
+                int ch;
+                while ((ch = esr.read()) >= 0) {
+                    result += Character.toString(ch);
+                }
+				throw new ScriptError(n, ("Exit value: " + process.exitValue() + "\n" + result).trim());
 			}
 			InputStream is = process.getInputStream();
 			InputStreamReader isr = new InputStreamReader(is);
