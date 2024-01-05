@@ -701,8 +701,7 @@ public class Interpreter {
 		if (n.getType().equals("string")) {
 			return interpretString(n, level + 1, ctx);
 		} else if (n.getType().equals("variable_instance")) {
-			Object result = interpretVariableInstance(n, level + 1, ctx); 
-			return result != null ? result : "<undefined>";
+			return interpretVariableInstance(n, level + 1, ctx);
 		} else if (n.getType().equals("integer")) {
 			return interpretInteger(n, level + 1);
 		} else if (n.getType().equals("dot_expression")) {
@@ -715,7 +714,11 @@ public class Interpreter {
 	Object interpretVariableInstance(Node n, int level, Context ctx) {
 		Node identifier = n.getChild(0);
 		String identifierName = interpretIdentifier(identifier, level + 1);
-		return ctx.getValue(identifierName);
+		Object result = ctx.getValue(identifierName);
+        if (result == null) {
+            throw new SemanticError(n, "The variable '" + identifierName + "' has not been set.");
+        }
+        return result;
 	}
 	
 	Object interpretDotExpression(Node n, int level, Context ctx) {
