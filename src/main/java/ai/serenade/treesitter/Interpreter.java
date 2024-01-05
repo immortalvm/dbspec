@@ -92,11 +92,18 @@ public class Interpreter {
 		return result;
 	}
 
-    void printNode(Node n) {
+    void printNodeLines(Node n) {
         int start = n.getStartByte();
+        while (start > 0 && source.charAt(start - 1) != '\n') {
+            start--;
+        }
         int end = n.getEndByte();
+        int len = source.length();
         while (start < end && source.charAt(end - 1) == '\n') {
             end--;
+        }
+        while (end < len && source.charAt(end) != '\n') {
+            end++;
         }
         int line = 0;
         int pos = -1;
@@ -122,31 +129,31 @@ public class Interpreter {
 			interpretSourceFile(n, 0, context);
 		} catch (AstError e) {
 			System.out.format("AST error\n");
-            printNode(e.node);
+            printNodeLines(e.node);
             if (log.getLevel() >= Log.DEBUG) {
                 e.printStackTrace();
             }
 		} catch (SemanticError e) {
 			System.out.format("Semantic error: %s\n", e.reason);
-            printNode(e.node);
+            printNodeLines(e.node);
             if (log.getLevel() >= Log.DEBUG) {
                 e.printStackTrace();
             }
 		} catch (SqlError e) {
 			System.out.format("SQL error - %s\n", e.reason);
-            printNode(e.node);
+            printNodeLines(e.node);
             if (log.getLevel() >= Log.DEBUG) {
                 e.printStackTrace();
             }
 		} catch (ScriptError e) {
 			System.out.format("Error in script - %s\n", e.reason);
-            printNode(e.node);
+            printNodeLines(e.node);
             if (log.getLevel() >= Log.DEBUG) {
                 e.printStackTrace();
             }
 		} catch (AssertionFailure e) {
 			System.out.format("Assertion failed\n");
-            printNode(e.node);
+            printNodeLines(e.node);
             if (log.getLevel() >= Log.DEBUG) {
                 e.printStackTrace();
             }
