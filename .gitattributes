@@ -1,6 +1,9 @@
-#
-# https://help.github.com/articles/dealing-with-line-endings/
-#
+# We use only LF by default. Otherwise, creating the docker image from
+# MS Windows becomes a mess.
+* text eol=lf
+
+*.so binary
+*.jar binary
+
 # These are explicitly windows files and should use crlf
 *.bat           text eol=crlf
-
