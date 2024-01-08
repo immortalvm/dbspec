@@ -29,10 +29,11 @@ RUN apt-get update && apt-get install -y \
     openjdk-11-jdk-headless ant \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILD /dbspec/dbspec.jar /dbspec/*.so /dbspec
+COPY --from=BUILD /dbspec/dbspec.jar /dbspec/*.so /dbspec/
+COPY --from=BUILD /dbspec/lib/*.jar /dbspec/lib/
 COPY --chmod=755 <<"EOF" /usr/local/bin/dbspec
 #!/usr/bin/env bash
-$JAVA_HOME/bin/java -jar /dbspec/dbspec.jar $1
+$JAVA_HOME/bin/java -jar /dbspec/dbspec.jar $@
 EOF
 
 WORKDIR /root
