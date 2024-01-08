@@ -7,17 +7,17 @@ import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class Siard {
 	public static boolean VIEWS_AS_TABLES = false; // TODO: Does this make sense?
-	public static long PROCESS_TIMEOUT_SECONDS = 10; 
 	Dbms dbms;
 	File jarDir;
+	Log log;
 
-	public Siard(Dbms dbms, File jarDir) {
+	public Siard(Dbms dbms, File jarDir, Log log) {
 		this.dbms = dbms;
 		this.jarDir = jarDir;
+        this.log = log;
 	}
 	
 	public void transfer(Connection conn, String siardFilename, String lobFoldername) throws SiardError {
@@ -50,28 +50,20 @@ public class Siard {
     		cmd.add(String.format("-p=%s", dbPassword));
     		cmd.add(String.format("-s=%s", canonicalPath(siardFilename)));
     		String[] cmdstrings = cmd.toArray(String[]::new);
+            log.write(Log.DEBUG, "--- SIARD command: %s\n\n", String.join(" ", cmdstrings));
             Runtime rt = Runtime.getRuntime();
             Process p = rt.exec(cmdstrings);
-            String response = readProcessOutput(p);
-            p.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            p.waitFor();
             if (p.exitValue() != 0) {
-            	throw new SiardError(response);
+            	throw new SiardError(Script.streamToString(p.getErrorStream())
+                                     + Script.streamToString(p.getInputStream()));
             }
+        } catch (SiardError e) {
+            throw e;
         } catch(Exception e) {
             throw new SiardError(e.toString());
         }
 	}
-	
-    private String readProcessOutput(Process p) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String response = "";
-        String line;
-        while ((line = reader.readLine()) != null) {
-            response += line + "\n";
-        }
-        reader.close();
-        return response;
-    }
 
     private String canonicalPath(String filename) throws IOException {
     	File f = new File(filename);

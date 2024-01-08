@@ -44,8 +44,8 @@ public class Interpreter {
 			this.context = new Context();
 			this.connections = new Context();
 			this.dbms = new Dbms();
-			this.siard = new Siard(this.dbms, this.jarDir);
 			this.log = new Log(verbosityLevel);
+			this.siard = new Siard(this.dbms, this.jarDir, this.log);
 			File treesitterLibFile = new File(jarDir, TREE_SITTER_LIBRARY);
 			System.load(treesitterLibFile.getAbsolutePath());
 			loadConfigFile();

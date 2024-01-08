@@ -15,7 +15,7 @@ public class Script {
 	final static String EXEC_MARKER = "#!";
 
 	public static String execute(Node n, String interpreter, String script) {
-		String result = "";
+		String result;
 		try {
 			// Create script and make it executable
 			File tempFile = File.createTempFile("script-", "");
@@ -33,20 +33,10 @@ public class Script {
 			Process process = new ProcessBuilder(tempFile.getAbsolutePath()).start();
 			process.waitFor();
 			if (process.exitValue() != 0) {
-                InputStream es = process.getErrorStream();
-                InputStreamReader esr = new InputStreamReader(es);
-                int ch;
-                while ((ch = esr.read()) >= 0) {
-                    result += Character.toString(ch);
-                }
+                result = streamToString(process.getErrorStream());
 				throw new ScriptError(n, ("Exit value: " + process.exitValue() + "\n" + result).trim());
 			}
-			InputStream is = process.getInputStream();
-			InputStreamReader isr = new InputStreamReader(is);
-			int ch;
-			while ((ch = isr.read()) >= 0) {
-				result += Character.toString(ch);
-			}
+            result = streamToString(process.getInputStream());
 		} catch (IOException e) {
 			throw new ScriptError(n, e.getMessage());
 		} catch (InterruptedException e) {
@@ -54,5 +44,14 @@ public class Script {
 		}
 		return result;
 	}
-	
+
+    public static String streamToString(InputStream es) throws IOException {
+        InputStreamReader esr = new InputStreamReader(es);
+		String result = "";
+        int ch;
+        while ((ch = esr.read()) >= 0) {
+            result += Character.toString(ch);
+        }
+        return result;
+    }
 }
