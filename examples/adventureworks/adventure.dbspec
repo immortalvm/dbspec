@@ -1,0 +1,200 @@
+Parameters:
+	host - Hostname of PostgreSQL instance used for the staging database
+	port - Port of PostgreSQL instance
+	user - Database user (must be able to create the staging database)
+	password - Database password (cannot contain ")
+
+# Name of the staging database
+Set db = "adventure"
+
+Set dataOwner = "Contoso, Ltd."
+Set dataOriginTimespan = "2005-2023"
+
+# We assume the current directory as root.
+# Notice that we must strip the result (which includes a newline).
+Set root = result using "/usr/bin/env bash":
+	pwd
+Set root = root.stripped
+
+Set build = "${root}/build"
+Set dist = "${root}/dist"
+
+
+### Restore ###
+
+Log "Download and extract AdventureWorks data to ${build}..."
+
+Execute using "/usr/bin/env bash":
+	set -e
+	mkdir -p "${build}"
+	rm -rf "${build}/*"
+	git clone https://github.com/lorint/AdventureWorks-for-Postgres.git "${build}"
+	cd "${build}"
+	git reset --hard b37c060
+	rm -rf .git
+	wget https://github.com/Microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks-oltp-install-script.zip
+	unzip AdventureWorks-oltp-install-script.zip
+
+Log "Adjust CSV files..."
+
+Execute using "/usr/bin/env bash":
+	set -e
+	cd "${build}"
+	/usr/bin/ruby update_csvs.rb
+	grep -v "^SET CLIENT_ENCODING=latin1;$" install.sql > temp_install.sql
+	mv temp_install.sql install.sql
+
+Log "Create staging database '${db}'..."
+
+Execute using "/usr/bin/env bash":
+	set -e
+	export PGHOST="${host}"
+	export PGPORT="${port}"
+	export PGUSER="${user}"
+	export PGPASSWORD="${password}"
+	/usr/bin/psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${db}\";"
+	cd "${build}"
+	/usr/bin/psql -v ON_ERROR_STOP=1 -d "${db}" < install.sql
+
+
+### Transformations ###
+
+Log "Open connection..."
+
+Set dbc = connection to "jdbc:postgresql://${host}:${port}/${db}" with:
+	user = "${user}"
+	password = "${password}"
+
+Log "Perform initial sanity checks..."
+
+Set dep_ids = result via dbc:
+	SELECT departmentid
+	FROM humanresources.department
+Assert dep_ids.size == 16
+
+# Counting in the DBMS may be more efficient, but less elegant in DbSpec (for now):
+#
+# Set dep_count = result via dbc:
+# 	SELECT COUNT(departmentid)
+# 	FROM humanresources.department
+# Assert dep_count.size == 1
+# For (n) in dep_count:
+# 	Assert n.as_integer == 16
+
+# TODO: Add more assertions
+
+Log "Drop 'convenience views'..."
+
+Execute via dbc:
+	DROP SCHEMA hr, pe, pr, pu, sa CASCADE
+
+
+Log "Convert materialized views to normal views..."
+# ... since DbToSiard ignores materialized views
+
+Set mat_views = result via dbc:
+	SELECT schemaName, matViewName, definition
+	FROM pg_matviews
+
+Assert mat_views.size == 2
+
+For (schemaName, matViewName, definition) in mat_views:
+	# Dropping the materialized view first is risky, but we can always go back to start.
+	Execute via dbc:
+		DROP MATERIALIZED VIEW "${schemaName}"."${matViewName}";
+		CREATE VIEW "${schemaName}"."${matViewName}" AS ${definition};
+
+Log "Extract (native) view queries..."
+# Since SiardFromDb does not do this
+
+Set views = result via dbc:
+	SELECT schemaname, viewname, definition
+	FROM pg_views
+	WHERE viewowner='$${user}'
+
+Assert views.size == 21
+
+Execute using "/usr/bin/env bash":
+	mkdir "${build}/views"
+
+For (schemaname, viewname, definition) in views:
+	# NB. This will not work if the schema or view names contain special characters such as ".".
+	Execute using "/usr/bin/env bash":
+		cat << "EOT_1we8gYhkbe" > "${build}/views/${schemaname}.${viewname}.sql"
+		${definition.stripped}
+		EOT_1we8gYhkbe
+
+
+### Output and post-transformations ###
+
+Log "Specify additional metadata..."
+
+# The SIARD Suite uses such comments as metadata.
+Execute via dbc:
+	COMMENT ON DATABASE adventure0 IS 'This is the AdventureWorkds PostgreSQL database';
+
+## Alternatively:
+# Metadata for dbc:
+# 	description:
+# 		This is the original AdventureWorkds PostgreSQL database.
+
+# Make sure ${dist} exists and is empty
+Execute using "/usr/bin/env bash":
+	set -e
+	mkdir -p "${dist}"
+	rm -rf "${dist}/*"
+
+Set siard = "${dist}/${db}.siard"
+
+Log "Produce '${siard}'... (This may take a couple of minutes.)"
+
+Output dbc to "${siard}"
+
+Log "Adjust header/metadata.xml..."
+
+Execute using "/usr/bin/env bash":
+	set -e
+	unzip "${siard}" "header/metadata.xsd" "header/metadata.xml" -d "${build}"
+	cd "${build}/header"
+	xmllint --noout --schema metadata.xsd metadata.xml
+
+Execute using "/usr/bin/env python3":
+	import os, re
+	from pathlib import Path
+	import xml.etree.ElementTree as ET
+
+	ns = 'http://www.bar.admin.ch/xmlns/siard/2/metadata.xsd'
+	nss = { '': ns }
+	ET.register_namespace('', ns)
+	tree = ET.parse("${build}/header/metadata.xml")
+	root = tree.getroot()
+	root.find('dbname', nss).text = '${db}'
+	root.find('dataOwner', nss).text = '${dataOwner}'
+	root.find('dataOriginTimespan', nss).text = '${dataOriginTimespan}'
+	root.find('producerApplication', nss).text = 'DbSpec interpreter - Norwegian Computing Center'
+	root.remove(root.find('clientMachine', nss))
+	root.remove(root.find('connection', nss))
+	root.remove(root.find('databaseUser', nss))
+	root.find('users', nss).clear()
+	root.remove(root.find('privileges', nss))
+
+	# Set queryOriginal for views
+	r = re.compile('^([^.]+)\\.([^.]+)\\.sql$')
+	for filename in os.listdir("${build}/views"):
+		m = r.match(filename)
+		if m:
+			v = root.find(f"schemas/schema/name[.='{m.group(1)}']/../views/view/name[.='{m.group(2)}']/..", nss)
+			if not v:
+				raise Exception(filename)
+			qo = ET.Element('queryOriginal')
+			qo.text = Path("${build}/views/" + filename).read_text()
+			v.insert(1, qo)
+
+	tree.write("${build}/header/metadata.xml", encoding='UTF-8', xml_declaration=True)
+
+Execute using "/usr/bin/env bash":
+	set -e
+	cd "${build}/header"
+	xmllint --noout --schema metadata.xsd metadata.xml
+	cd ..
+	zip "${siard}" "header/metadata.xml"

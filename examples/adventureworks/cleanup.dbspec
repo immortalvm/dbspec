@@ -1,0 +1,30 @@
+Parameters:
+	host - Hostname of PostgreSQL instance used for the staging database
+	port - Port of PostgreSQL instance
+	user - Database user (must be able to create the staging database)
+	password - Database password (cannot contain ")
+
+Set db = "adventure"
+Set root = result using "/usr/bin/env bash":
+	pwd
+Set root = root.stripped
+Set build = "${root}/build"
+
+
+### Cleanup ###
+
+Log "Delete build directory, ${build}..."
+
+Execute using "/usr/bin/env bash":
+	rm -r "${build}"
+
+Log "Drop staging database, ${db}..."
+
+# This will connnect to the default database of the user instead of ${db}.
+Set dbc_user = connection to "jdbc:postgresql://${host}:${port}/" with:
+	user = "${user}"
+	password = "${password}"
+
+# Force is necessary if connection dbc (in adventure.dbspec) might still be open.
+Execute via dbc_user:
+	DROP DATABASE "${db}" WITH (FORCE);
