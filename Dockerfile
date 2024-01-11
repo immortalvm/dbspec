@@ -1,9 +1,7 @@
-# syntax=docker/dockerfile:1.4
-
-#!/usr/bin/env -S docker build . --tag=nr/dbspec:1.0 --network=host --file
+#!/usr/bin/env -S docker build . --tag=nr/dbspec:1.0 --file
 # Cf. https://stackoverflow.com/a/74532086
 
-FROM docker.io/library/ubuntu:22.04 AS BUILD
+FROM docker.io/library/ubuntu:22.04 AS build
 
 RUN apt-get update && apt-get install -y \
     python3 python3-pip \
@@ -29,8 +27,8 @@ RUN apt-get update && apt-get install -y \
     openjdk-11-jdk-headless ant \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=BUILD /dbspec/dbspec.jar /dbspec/*.so /dbspec/
-COPY --from=BUILD /dbspec/lib/*.jar /dbspec/lib/
+COPY --from=build /dbspec/dbspec.jar /dbspec/*.so /dbspec/
+COPY --from=build /dbspec/lib/*.jar /dbspec/lib/
 COPY --chmod=755 <<"EOF" /usr/local/bin/dbspec
 #!/usr/bin/env bash
 $JAVA_HOME/bin/java -jar /dbspec/dbspec.jar $@
