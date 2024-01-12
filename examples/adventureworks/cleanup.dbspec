@@ -1,3 +1,5 @@
+#!/usr/bin/env dbspec
+
 Parameters:
 	host - Hostname of PostgreSQL instance used for the staging database
 	port - Port of PostgreSQL instance
