@@ -121,12 +121,13 @@ public class Interpreter {
         } while (start < end);
     }
 
-	void interpret(int verbosityLevel) {
+	boolean interpret(int verbosityLevel) {
 		log.setLevel(verbosityLevel);
 		try {
 			Node n = tree.getRootNode();
 			log.write(Log.DEBUG, "Interpretation:\n\n");
 			interpretSourceFile(n, 0, context);
+            return true;
 		} catch (AstError e) {
 			System.out.format("AST error\n");
             printNodeLines(e.node);
@@ -160,6 +161,7 @@ public class Interpreter {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+        return false;
 	}
 
 	String indent(int level) {

@@ -22,16 +22,17 @@ public class RunInterpreter {
             cmd = parser.parse(options, args);
         } catch (ParseException e) {
             formatter.printHelp("java -jar dbspec.jar OPTIONS FILENAME", options);
-            System.exit(1);
+            System.exit(3);
         }
         String verbosityLevelString = cmd.getOptionValue("verbosity");
         int verbosityLevel = verbosityLevelString == null ? Log.INFO : Integer.parseInt(verbosityLevelString);
-        if (cmd.getArgs().length > 0) {
-        	Interpreter i = new Interpreter(cmd.getArgs()[0], verbosityLevel);
-        	i.interpret(verbosityLevel);
-        } else {
+        if (cmd.getArgs().length <= 0) {
         	System.out.format("Error: missing input filename\n");
+            System.exit(2);
+        }
+        Interpreter i = new Interpreter(cmd.getArgs()[0], verbosityLevel);
+        if (!i.interpret(verbosityLevel)) {
+            System.exit(1);
         }
 	}
-
 }
