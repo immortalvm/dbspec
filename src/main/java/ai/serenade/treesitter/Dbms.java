@@ -18,8 +18,7 @@ public class Dbms {
 	
 	public Connection connect(String url, Context ctx) throws SQLException {
 		Properties parameters = new Properties();
-		parameters.put("user", ctx.getValue("user"));
-		parameters.put("password", ctx.getValue("password"));
+        ctx.forEach((k, v) -> parameters.put(k, v));
 		Connection c = DriverManager.getConnection(url, parameters);
 		connectionParameters.put(c, parameters);
 		return c;

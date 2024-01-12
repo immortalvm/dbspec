@@ -1,6 +1,7 @@
 package ai.serenade.treesitter;
 
 import java.util.HashMap;
+import java.util.function.BiConsumer;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -51,4 +52,7 @@ public class Context {
 		return bindings.entrySet().stream().map(e -> String.format("%s='%s'", e.getKey(), e.getValue())).collect(Collectors.joining(", ", "[", "]"));
 	}
 
+    public void forEach(BiConsumer<String, Object> action) {
+        bindings.forEach((k, v) -> action.accept(k, getValue(k)));
+    }
 }

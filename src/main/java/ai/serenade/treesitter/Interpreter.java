@@ -798,14 +798,16 @@ public class Interpreter {
 	}
 	
 	Context interpretKeyValuePairs(Node n, int level, Context ctx) {
-		Context keyValuePairs = new Context();
-		for (Node c : n.getChildren()) {
-			if (c.getType().equals("key_value_pair")) {
-				interpretKeyValuePair(c, level + 1, keyValuePairs, ctx);
-			} else {
-				throw new AstError(n);
-			}
-		}
+		Context keyValuePairs = new Context(); // NB: does not inherit from ctx
+        if (n != null) {
+            for (Node c : n.getChildren()) {
+                if (c.getType().equals("key_value_pair")) {
+                    interpretKeyValuePair(c, level + 1, keyValuePairs, ctx);
+                } else {
+                    throw new AstError(n);
+                }
+            }
+        }
 		return keyValuePairs;
 	}
 
