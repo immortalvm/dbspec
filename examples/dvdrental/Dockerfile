@@ -2,7 +2,10 @@
 
 FROM nr/dbspec-ex:1.0 AS build
 
-COPY dvd.dbspec dvdrental.tar imdb_ratings.csv  .
+RUN wget https://www.postgresqltutorial.com/wp-content/uploads/2019/05/dvdrental.zip
+RUN unzip dvdrental.zip
+
+COPY dvd.dbspec imdb_ratings.csv  .
 RUN mkdir dist
 
 RUN /etc/init.d/postgresql start \
