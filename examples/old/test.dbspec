@@ -1,0 +1,142 @@
+# Some optional comments
+# and newlines
+
+Parameters:
+	port - The port of the DBMS
+	user
+	password
+	# Comment!
+	id_size - The number of characters in generated IDs
+
+# See e.g. https://www.baeldung.com/run-shell-command-in-java#ProcessBuilder
+Execute using "/bin/bash":
+	PGPASSWORD=${password} psql -h localhost -p ${port} -U ${user} -c "DROP DATABASE dvdrental;"
+	PGPASSWORD=${password} psql -h localhost -p ${port} -U ${user} -c "CREATE DATABASE dvdrental;"
+	PGPASSWORD=${password} pg_restore -h localhost -p ${port} -U ${user} -d dvdrental ../dvdrental/dvdrental.tar
+
+# Cf. https://docs.oracle.com/javase/tutorial/jdbc/basics/connecting.html
+Set dbc = connection to "jdbc:postgresql://localhost:${port}/dvdrental" with:
+	user = "${user}"
+	password = "${password}"
+	foo:
+		bar
+
+Execute via dbc:
+	CREATE TABLE Temp (
+		id VARCHAR(${id_size}) NOT NULL,
+		counter INT NULL,
+		PRIMARY KEY (id)
+	);
+
+Set t = result via dbc:
+	SELECT staff_id, first_name
+	FROM staff
+
+Set names = ""
+
+For (id, name) in t:
+	# The resulting string will have trailing ", ".
+	# We might consider adding more primitives to solve such issues,
+	# and maybe assertions regarding the (expected) sizes of result sets.
+	Set names = "${names}${name}, "
+
+
+Metadata for dbc:
+	description:
+		This is a very interesting database.
+	archiver = "ivar.rummelhoff@nr.no"
+
+	Schema public:
+		description:
+			The most important schema!
+			The description continues.
+
+		Type customer_preferences - A set of customer preferences
+
+		Type customer_address:
+			description = "The components of a customer address, thanks to ${user}."
+			# The other "type level metadata" should be extracted from the database.
+
+		# This has no effect if we include every table in the SIARD file by default.
+		Table category
+
+		Table staff - Main employee table
+
+		Table customer:
+			description = "The main customer table"
+			Column customer_id - A compromising picture of the customer
+			Column store_id:
+				description = "The 'stuff' column."
+				Field big_stuff:
+					description = "A big field"
+
+			# Should we output all the keys or only the keys mentioned here?
+			# If all the keys are included by default, should there be a way to override this?
+			Key pk_customer - Description needed?
+
+			Check chk_customer - Ensure that every customer has a valid identity number.
+
+		View sales_by_store:
+			description = "An aggregate view of current delivery issues"
+			Column store - The full name of the customer
+			Column manager
+			Column total_sales:
+				description = "Descr"
+				Field attachments - Blob containing attachments, if any
+
+	Command:
+		title = "Hent karakterutskrift for tidligere elev"
+		Parameters:
+			fnr - Fødselsnummer
+			knr - Kommune
+		Body:
+			SELECT g.subject AS fag, g.grade AS karakter
+			FROM public.grades g
+			WHERE g.fødselsnummer = ${fnr}
+			AND g.place = ${knr};
+
+
+Output dbc to "my_test.siard"
+
+
+Interpolation symbol = '🦄'
+Set weird_id = "${port} \"vs\" 🦄{port}"
+
+Execute via dbc:
+	DELETE FROM Temp
+	WHERE id = 🦄🦄{weird_id};
+
+Interpolation symbol = '$'
+Log "Weird ID: ${weird_id}"
+Log "Integer: ${-0123456789}"
+
+# Equivalent to:
+# Set res = "A newline will follow this string\n"
+Set res = result using "/usr/bin/env python3":
+	print("A newline will follow this string")
+
+Set i = t.size
+Set j = " 123 ".stripped.as_integer
+
+If 1 < 0:
+	# This should always fail
+	Assert 0 == 1
+
+# It's also ok to have a comment here.
+Else:
+	Log "Puh! That was close."
+
+Set long_string:
+	Line 1
+	${port}
+	Line 3
+
+
+### Local variables:
+### indent-tabs-mode: t
+### tab-width: 4
+### comment-start: "#"
+### comment-style: "plain"
+### whitespace-style: (face tabs tab-mark)
+### eval: (whitespace-mode 1)
+### End:
