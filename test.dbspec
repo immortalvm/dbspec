@@ -12,7 +12,7 @@ Parameters:
 Execute using "/bin/bash":
 	PGPASSWORD=${password} psql -h localhost -p ${port} -U ${user} -c "DROP DATABASE dvdrental;"
 	PGPASSWORD=${password} psql -h localhost -p ${port} -U ${user} -c "CREATE DATABASE dvdrental;"
-	PGPASSWORD=${password} pg_restore -h localhost -p ${port} -U ${user} -d dvdrental dvdrental.tar
+	PGPASSWORD=${password} pg_restore -h localhost -p ${port} -U ${user} -d dvdrental examples/dvdrental/dvdrental.tar
 
 # Cf. https://docs.oracle.com/javase/tutorial/jdbc/basics/connecting.html
 Set dbc = connection to "jdbc:postgresql://localhost:${port}/dvdrental" with:

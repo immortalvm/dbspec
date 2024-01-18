@@ -1,0 +1,113 @@
+#!/usr/bin/env dbspec
+
+Parameters:
+	host - PostgreSQL hostname
+	port - PostgreSQL port
+	user - Database user
+	password - Database password
+
+Set db = "dvdrental"
+
+Set pgInit:
+	set -e
+	export PGHOST="${host}"
+	export PGPORT="${port}"
+	export PGUSER="${user}"
+	export PGPASSWORD="${password}"
+
+
+Log "Restore dump to database ${db}..."
+
+Execute using "/bin/bash":
+	${pgInit}
+	psql -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ${db}"
+	psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE ${db}"
+	pg_restore --no-owner --role=${user} -d ${db} dvdrental.tar
+
+Set pgInit:
+	${pgInit}
+	export PGDATABASE="${db}"
+
+Set dbc = connection to "jdbc:postgresql://${host}:${port}/${db}" with:
+	user = "${user}"
+	password = "${password}"
+
+
+Log "Import recent IMDB ratings..."
+
+Execute via dbc:
+	CREATE TABLE tmp_imdb_rating (
+		film_id INT2 PRIMARY KEY,
+		rating NUMERIC(2, 1)
+	)
+
+Execute using "/bin/bash":
+	${pgInit}
+	psql -v ON_ERROR_STOP=1 -d ${db} -c \
+		"\copy tmp_imdb_rating FROM imdb_ratings.csv CSV"
+
+Execute via dbc:
+	ALTER TABLE film
+	ADD imdb_rating NUMERIC(2, 1) NULL;
+
+	UPDATE film AS f
+	SET imdb_rating = tmp.rating
+	FROM tmp_imdb_rating tmp
+	WHERE tmp.film_id = f.film_id;
+
+	DROP TABLE tmp_imdb_rating;
+
+
+Log "Check that every film has at least one category"
+
+Set without_category = result via dbc:
+	SELECT title
+	FROM film
+	WHERE film_id NOT IN (SELECT film_id FROM film_category);
+
+Assert without_category.size == 0
+
+
+Log "Drop customer information..."
+
+Execute via dbc:
+	DROP VIEW customer_list;
+	DROP FUNCTION rewards_report;
+	ALTER TABLE payment DROP customer_id;
+	ALTER TABLE rental DROP customer_id;
+	DROP TABLE customer;
+
+	DELETE FROM address
+	WHERE address_id NOT IN (
+		SELECT address_id FROM staff
+		UNION
+		SELECT address_id FROM store);
+
+# ...
+
+Log "Add metadata (descriptions)..."
+
+Metadata for dbc:
+	description = "Database of our DVD rental business"
+	Schema public:
+		# ...
+		Table film:
+			description:
+				Film data such as title, release year, length, rating, etc
+			Column film_id - Internal primary key
+			Column title - Original title
+			# ...
+			Column imdb_rating - IMDB rating as of 2024-01-01
+		# ...
+		View sales_by_store:
+			description = "Total sales for each store"
+			Column store - <City>,<Country>
+			Column manager - <First name> <Last name> of current store manager
+			Column total_sales - Sum of all payments
+		# ...
+
+Log "Produce SIARD archive..."
+
+Output dbc to "dist/${db}.siard"
+
+# ...
