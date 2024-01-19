@@ -7,13 +7,13 @@ An interpreter for the DbSpec language.
 Recursively clone the project with submodules:
 
 ```shell
-git clone https://github.com/immortalvm/iDA-DbSpec-interpreter.git --recursive
+git clone https://github.com/immortalvm/dbspec.git --recursive
 ```
 
 Or clone first and update the submodules then:
 
 ```shell
-git clone https://github.com/immortalvm/iDA-DbSpec-interpreter.git
+git clone https://github.com/immortalvm/dbspec.git
 git submodule update --init --recursive
 # or:  git submodule init && git submodule update
 ```
