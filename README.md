@@ -77,6 +77,7 @@ cp dbspec-ts-mode.el ~/.emacs.d
 Since the DbSpec interpreter uses components from SIARD Suite internally,
 we have decided to use the same license for now, which is CDDL 1.0.
 In the future we might replace these components and switch to a more permissive license.
+The parser submodule is made available under the MIT license.
 The DbSpec source code also contains fragments of
 [java-tree-sitter](https://github.com/serenadeai/java-tree-sitter),
 which uses the MIT license.
