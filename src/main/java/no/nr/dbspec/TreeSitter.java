@@ -1,3 +1,4 @@
+// This file is based on ai.serenade.treesitter.TreeSitter in java-tree-sitter.
 package no.nr.dbspec;
 
 public class TreeSitter {

@@ -1,3 +1,4 @@
+// This file is based on ai.serenade.treesitter.TreeCursor in java-tree-sitter.
 package no.nr.dbspec;
 
 public class TreeCursor implements AutoCloseable {

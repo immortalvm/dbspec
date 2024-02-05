@@ -1,3 +1,4 @@
+// This file is based on ai.serenade.treesitter.Parser in java-tree-sitter.
 package no.nr.dbspec;
 
 import java.io.UnsupportedEncodingException;

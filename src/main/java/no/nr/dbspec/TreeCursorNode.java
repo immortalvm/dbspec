@@ -1,3 +1,4 @@
+// This file is based on ai.serenade.treesitter.TreeCursorNode in java-tree-sitter.
 package no.nr.dbspec;
 
 public class TreeCursorNode {

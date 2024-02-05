@@ -1,3 +1,4 @@
+// This file is based on ai.serenade.treesitter.Tree in java-tree-sitter.
 package no.nr.dbspec;
 
 public class Tree implements AutoCloseable {

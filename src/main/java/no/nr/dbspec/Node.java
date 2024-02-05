@@ -1,3 +1,4 @@
+// This file is based on ai.serenade.treesitter.Node in java-tree-sitter.
 package no.nr.dbspec;
 
 import java.nio.charset.StandardCharsets;
