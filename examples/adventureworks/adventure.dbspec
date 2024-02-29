@@ -132,8 +132,13 @@ For (schemaname, viewname, definition) in views:
 Log "Specify additional metadata..."
 
 Metadata for dbc:
+	dbname = db
+	dataOwner = dataOwner
+	dataOriginTimespan = dataOriginTimespan
 	description:
 		This is the original AdventureWorkds PostgreSQL database.
+	archiver = "John Doe"
+	archiverContact = "john.doe@example.com"
 
 ## Alternatively (since SIARD Suite extracts such comments as metadata):
 # Execute via dbc:
@@ -165,9 +170,7 @@ Execute using "/usr/bin/env python3":
 	ET.register_namespace('', ns)
 	tree = ET.parse("${build}/header/metadata.xml")
 	root = tree.getroot()
-	root.find('dbname', nss).text = '${db}'
-	root.find('dataOwner', nss).text = '${dataOwner}'
-	root.find('dataOriginTimespan', nss).text = '${dataOriginTimespan}'
+	# TODO: This should instead be done by the dbspec executable.
 	root.find('producerApplication', nss).text = 'DbSpec interpreter - Norwegian Computing Center'
 	root.remove(root.find('clientMachine', nss))
 	root.remove(root.find('connection', nss))
