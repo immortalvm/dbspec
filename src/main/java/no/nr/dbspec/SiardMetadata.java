@@ -2,6 +2,8 @@ package no.nr.dbspec;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import no.nr.dbspec.MdObject.MdType;
 import ch.admin.bar.siard2.api.Archive;
@@ -19,13 +21,13 @@ import ch.admin.bar.siard2.api.primary.ArchiveImpl;
 
 public class SiardMetadata {
 
-    public static void updateMetadata(String siardFilename, MdObject mdo) {
+    public static void updateMetadata(String siardFilename, MdObject mdo, Connection connection, Node n) {
         Archive archive = ArchiveImpl.newInstance();
         File siardFile = new File(siardFilename);
         try {
             archive.open(siardFile);
             MetaData md = archive.getMetaData();
-            updateMandatoryMetadata(md, mdo);
+            updateDbLevelMetadata(md, mdo, connection, n);
             updateArchiveMetadata(archive, mdo);
             archive.close();
         } catch (IOException e) {
@@ -33,13 +35,22 @@ public class SiardMetadata {
         }
     }
 
-    static void updateMandatoryMetadata(MetaData md, MdObject mdo) {
-        md.setDbName(getInfoField(mdo, "dbname"));
-        md.setDescription(getInfoField(mdo, "description"));
-        md.setArchiver(getInfoField(mdo, "archiver"));
-        md.setArchiverContact(getInfoField(mdo, "archiverContact"));
-        md.setDataOwner(getInfoField(mdo, "dataOwner"));
-        md.setDataOriginTimespan(getInfoField(mdo, "dataOriginTimespan"));
+    static void updateDbLevelMetadata(MetaData md, MdObject mdo, Connection connection, Node n) {
+        String x;
+        x = getInfoField(mdo, "dbname");
+        if (x == null) {
+            try {
+                x = connection.getCatalog();
+            } catch (SQLException e) {
+                throw new SqlError(n, e.getMessage());
+            }
+        }
+        if (x != null) md.setDbName(x);
+        if (null != (x = getInfoField(mdo, "description"))) md.setDescription(x);
+        if (null != (x = getInfoField(mdo, "archiver"))) md.setArchiver(x);
+        if (null != (x = getInfoField(mdo, "archiverContact"))) md.setArchiverContact(x);
+        if (null != (x = getInfoField(mdo, "dataOwner"))) md.setDataOwner(x);
+        if (null != (x = getInfoField(mdo, "dataOriginTimespan"))) md.setDataOriginTimespan(x);
     }
 
     static void updateArchiveMetadata(Archive archive, MdObject mdo) {
@@ -157,8 +168,8 @@ public class SiardMetadata {
         }
     }
 
-    static String getInfoField(MdObject mdo, String name) {
+    private static String getInfoField(MdObject mdo, String name) {
         MdObject child = mdo.getChild(MdType.INFO, name);
-        return child != null && child.getDocumentation().length() > 0 ? child.getDocumentation() : "<value not provided>";
+        return child != null && child.getDocumentation().length() > 0 ? child.getDocumentation() : null;
     }
 }

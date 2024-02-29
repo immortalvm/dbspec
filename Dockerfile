@@ -1,4 +1,4 @@
-#!/usr/bin/env -S docker build . --tag=nr/dbspec:1.0 --file
+#!/usr/bin/env -S docker build . --tag=nr/dbspec:1.1 --file
 # Cf. https://stackoverflow.com/a/74532086
 
 FROM docker.io/library/ubuntu:22.04 AS build

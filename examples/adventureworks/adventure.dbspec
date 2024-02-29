@@ -132,13 +132,10 @@ For (schemaname, viewname, definition) in views:
 Log "Specify additional metadata..."
 
 Metadata for dbc:
-	dbname = db
 	dataOwner = dataOwner
 	dataOriginTimespan = dataOriginTimespan
 	description:
 		This is the original AdventureWorkds PostgreSQL database.
-	archiver = "John Doe"
-	archiverContact = "john.doe@example.com"
 
 ## Alternatively (since SIARD Suite extracts such comments as metadata):
 # Execute via dbc:

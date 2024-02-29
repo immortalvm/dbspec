@@ -358,10 +358,11 @@ public class Interpreter {
     void interpretSiardOutput(Node n, int level, Context ctx) {
         Node connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
-        Object dbmsConnection = ctx.getValue(connectionString);
-        if (!(dbmsConnection instanceof Connection)) {
+        Object connectionObject = ctx.getValue(connectionString);
+        if (!(connectionObject instanceof Connection)) {
             throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
         }
+        Connection dbmsConnection = (Connection)connectionObject;
         Node file = n.getChildByFieldName("file");
         Object fileString = interpretBasicExpression(file, level, ctx);
         if (!(fileString instanceof String)) {
@@ -370,14 +371,14 @@ public class Interpreter {
         String roaeFileString = ((String)fileString).indexOf('.') == -1 ? (String)fileString + ".roae" : ((String)fileString).replaceAll("\\.[^.]*$", ".roae");
         log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, (String)fileString);
         try {
-            siard.transfer((Connection)dbmsConnection, (String)fileString, "lobs");
+            siard.transfer(dbmsConnection, (String)fileString, "lobs");
         } catch (SiardError e) {
             throw new SemanticError(n, "SIARD transfer failed: " + e.getReason());
         }
         MdObject md = (MdObject)connections.getValue(connectionString);
         if (md != null) {
             log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
-            SiardMetadata.updateMetadata((String)fileString, md);
+            SiardMetadata.updateMetadata((String)fileString, md, dbmsConnection, n);
             log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), (String)roaeFileString);
             RoaeMetadata.updateMetadata(roaeFileString, md);
         } else {
