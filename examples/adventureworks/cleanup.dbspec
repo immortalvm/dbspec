@@ -1,5 +1,6 @@
 #!/usr/bin/env dbspec
 
+# Parameters and variables as in adventure.dbspec
 Parameters:
 	host - Hostname of PostgreSQL instance used for the staging database
 	port - Port of PostgreSQL instance
@@ -20,7 +21,7 @@ Log "Delete build directory, ${build}..."
 Execute using "/usr/bin/env bash":
 	rm -r "${build}"
 
-Log "Drop staging database, ${db}..."
+Log "Drop staging database '${db}'..."
 
 # This will connnect to the default database of the user instead of ${db}.
 Set dbc_user = connection to "jdbc:postgresql://${host}:${port}/" with:

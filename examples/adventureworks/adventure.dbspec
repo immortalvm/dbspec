@@ -13,13 +13,13 @@ Set dataOwner = "Contoso, Ltd."
 Set dataOriginTimespan = "2005-2023"
 
 # We assume the current directory as root.
-# Notice that we must strip the result (which includes a newline).
+# Notice that we must strip the result since it includes a trailing newline.
+# (We consider adding a new language construct for this.)
 Set root = result using "/usr/bin/env bash":
 	pwd
 Set root = root.stripped
 
 Set build = "${root}/build"
-Set dist = "${root}/dist"
 
 
 ### Restore ###
@@ -74,7 +74,7 @@ Set dep_ids = result via dbc:
 	FROM humanresources.department
 Assert dep_ids.size == 16
 
-# Counting in the DBMS may be more efficient, but less elegant in DbSpec (for now):
+# Counting in the DBMS may be more efficient, but less elegant (for now at least):
 #
 # Set dep_count = result via dbc:
 # 	SELECT COUNT(departmentid)
@@ -131,22 +131,15 @@ For (schemaname, viewname, definition) in views:
 
 Log "Specify additional metadata..."
 
-# The SIARD Suite uses such comments as metadata.
-Execute via dbc:
-	COMMENT ON DATABASE adventure0 IS 'This is the AdventureWorkds PostgreSQL database';
+Metadata for dbc:
+	description:
+		This is the original AdventureWorkds PostgreSQL database.
 
-## Alternatively:
-# Metadata for dbc:
-# 	description:
-# 		This is the original AdventureWorkds PostgreSQL database.
+## Alternatively (since SIARD Suite extracts such comments as metadata):
+# Execute via dbc:
+# 	COMMENT ON DATABASE adventure0 IS 'This is the AdventureWorkds PostgreSQL database';
 
-# Make sure ${dist} exists and is empty
-Execute using "/usr/bin/env bash":
-	set -e
-	mkdir -p "${dist}"
-	rm -rf "${dist}/*"
-
-Set siard = "${dist}/${db}.siard"
+Set siard = "${build}/${db}.siard"
 
 Log "Produce '${siard}'... (This may take a couple of minutes.)"
 
@@ -154,6 +147,8 @@ Output dbc to "${siard}"
 
 Log "Adjust header/metadata.xml..."
 
+# Extract metadata.xsd and metadata.xml from ${siard},
+# and verify that metadata.xml conforms to the schema before we make any adjustments.
 Execute using "/usr/bin/env bash":
 	set -e
 	unzip "${siard}" "header/metadata.xsd" "header/metadata.xml" -d "${build}"
@@ -194,6 +189,8 @@ Execute using "/usr/bin/env python3":
 
 	tree.write("${build}/header/metadata.xml", encoding='UTF-8', xml_declaration=True)
 
+# Verify that metadata.xml conforms to the schema also after the adjustments,
+# and replace it in ${siard}.
 Execute using "/usr/bin/env bash":
 	set -e
 	cd "${build}/header"

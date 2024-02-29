@@ -1,0 +1,56 @@
+#!/usr/bin/env dbspec
+
+# As in adventure.dbspec
+Set db = "adventure"
+Set root = result using "/usr/bin/env bash":
+	pwd
+Set root = root.stripped
+Set build = "${root}/build"
+Set siard = "${build}/${db}.siard"
+
+Set dist = "${root}/dist"
+
+# Make sure ${dist} exists and is empty
+Execute using "/usr/bin/env bash":
+	set -e
+	mkdir -p "${dist}"
+	rm -rf "${dist}/*"
+
+
+### Create submission information package (SIP) ###
+# Presumably, more metadata would have to be added for this to be a valid
+# CITS SIARD package.
+
+Set objid = "sip_adventure_2024_1"
+Set sip = "${build}/${objid}"
+
+Execute using "/usr/bin/env bash":
+	set -e
+	mkdir "${sip}" && cd $_
+
+	mkdir representations && cd $_
+	mkdir siard_no_customers && cd $_
+	mkdir documentation
+	mkdir metadata && cd $_
+	mkdir preservation && cd $_
+	cp "${root}"/Dockerfile "${root}"/*.dbspec ./
+	cd ..
+	mkdir other
+	mkdir descriptive
+	cd ..
+	mkdir data && cd $_
+	cp "${siard}" .
+	cd ../../..
+
+	mkdir documentation && cd $_
+	mkdir database_diagrams
+	mkdir schemas
+	mkdir metadata && cd $_
+	mkdir preservation
+	mkdir other
+	mkdir descriptive
+
+	cd "${build}"
+	python3 -m eatb.package_creator -n "${objid}" -d "${sip}" -t SIP
+
+	mv "${objid}.tar" "${dist}/"

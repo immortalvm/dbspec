@@ -1,4 +1,4 @@
-#!/usr/bin/env -S docker build . --tag=nr/dbspec-ex:1.0 --file
+#!/usr/bin/env -S docker build . --tag=nr/dbspec-ex:1.1 --file
 
 FROM nr/dbspec:1.0
 
@@ -12,6 +12,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
+
+# Install eatb from PyPi. (As of version 0.1.19, this is still a bit messy.)
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY default_commands.cfg .
+RUN mv default_commands.cfg $(python3 -c 'import site; print(site.getsitepackages()[0])')/eatb/resources/
+
 USER postgres
 RUN /etc/init.d/postgresql start \
     && psql -c "CREATE USER dbspec WITH CREATEDB ENCRYPTED PASSWORD 'secret';" \
