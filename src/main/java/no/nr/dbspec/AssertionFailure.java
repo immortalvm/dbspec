@@ -1,10 +1,11 @@
 package no.nr.dbspec;
 
-public class AssertionFailure extends Error {
-    private static final long serialVersionUID = 1L;
-    Node node;
+import org.treesitter.TSNode;
 
-    public AssertionFailure(Node node) {
+public class AssertionFailure extends Error {
+    TSNode node;
+
+    public AssertionFailure(TSNode node) {
         this.node = node;
     }
 }

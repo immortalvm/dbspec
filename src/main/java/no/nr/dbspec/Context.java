@@ -49,7 +49,9 @@ public class Context {
     }
 
     public String toString() {
-        return bindings.entrySet().stream().map(e -> String.format("%s='%s'", e.getKey(), e.getValue())).collect(Collectors.joining(", ", "[", "]"));
+        return bindings.entrySet().stream()
+                .map(e -> String.format("%s='%s'", e.getKey(), e.getValue()))
+                .collect(Collectors.joining(", ", "[", "]"));
     }
 
     public void forEach(BiConsumer<String, Object> action) {

@@ -1,59 +1,109 @@
 plugins {
-    id "java-library"
-    id "maven-publish"
+    id("application")
+    id("de.undercouch.download") version "5.6.0"
 }
 
-group = "no.nr"
-version = "1.0.0"
+group = 'no.nr'
+version = '1.0-SNAPSHOT'
 
 repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
-task buildSharedObject {
-    inputs.file "lib/no_nr_dbspec_Languages.cc"
-    inputs.file "lib/no_nr_dbspec_Languages.h"
-    inputs.file "lib/no_nr_dbspec_TreeSitter.cc"
-    inputs.file "lib/no_nr_dbspec_TreeSitter.h"
-    outputs.file "libjava-tree-sitter.so"
-
-    doLast {
-        exec {
-            commandLine "./build.py", "-o", "libjava-tree-sitter", "tree-sitter-dbspec"
+    mavenCentral().content {
+        // https://stackoverflow.com/a/68564179
+        excludeModule("javax.media", "jai_core")
+    }
+    maven {
+        name = "ImmortalVM"
+        url = uri("https://maven.pkg.github.com/immortalvm/tree-sitter-ng-dbspec")
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
         }
+    }
+    flatDir{
+        dirs("libs")
     }
 }
 
-clean {
-    delete "libjava-tree-sitter.so"
+tasks.register("download_siardcmd.zip", Download) {
+    // outputs.file("download/siardcmd.zip")
+    src("https://github.com/sfa-siard/SiardCmd/releases/download/2.2.1/siardcmd.zip")
+    dest {
+        File dir = file("download")
+        dir.mkdirs()
+        dir
+    }
+    onlyIfModified(true)
+    overwrite(true)
 }
 
-compileJava {
-    options.compilerArgs += ["-h", "${project.projectDir.toString()}/lib"]
+tasks.register("extract_siardcmd.zip", Copy) {
+    dependsOn("download_siardcmd.zip")
+    from(zipTree("download/siardcmd.zip")) {
+        include("siardcmd/siardcmd-2.2.1.zip")
+        eachFile { fcd ->
+            //noinspection GroovyAccessibility
+            fcd.relativePath = new RelativePath(true, fcd.relativePath.segments.drop(1))
+        }
+        includeEmptyDirs = false
+    }
+    into("download")
 }
 
-compileTestJava {
-    dependsOn buildSharedObject
+tasks.register("extract_siardcmd-2.2.1-libs", Copy) {
+    dependsOn("extract_siardcmd.zip")
+    from(zipTree("download/siardcmd-2.2.1.zip")) {
+        include("siardcmd/lib/**")
+        eachFile { fcd ->
+            //noinspection GroovyAccessibility
+            fcd.relativePath = new RelativePath(true, fcd.relativePath.segments.drop(2))
+        }
+        includeEmptyDirs = false
+    }
+    into("libs")
 }
+
+compileJava.dependsOn("extract_siardcmd-2.2.1-libs")
+
+tasks.register("extract_siardcmd-2.2.1-etc", Copy) {
+    dependsOn("extract_siardcmd.zip")
+    from(zipTree("download/siardcmd-2.2.1.zip")) {
+        include("siardcmd/etc/**")
+    }
+    into("build")
+}
+
+compileJava.dependsOn("extract_siardcmd-2.2.1-etc")
 
 dependencies {
-    testImplementation "org.junit.jupiter:junit-jupiter:5.6.2"
+    implementation("io.github.bonede:tree-sitter:0.22.5a")
+    implementation("no.nr:tree-sitter-ng-dbspec:1.0-SNAPSHOT")
+
+    implementation("commons-cli:commons-cli:1.7.0")
+    implementation("org.apache.commons:commons-text:1.12.0")
+
+    // From libs:
+    implementation fileTree(dir: 'libs', include: '*.jar')
+
+    testImplementation(platform("org.junit:junit-bom:5.10.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    // https://stackoverflow.com/a/77605392
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-publishing {
-    publications {
-        maven(MavenPublication) {
-            from components.java
-        }
+application {
+    mainClass = "no.nr.dbspec.RunInterpreter"
+    applicationDefaultJvmArgs = [
+        "-Dfile.encoding=UTF-8"
+    ]
+    applicationDistribution.from("build/siardcmd/etc") {
+        into("etc")
     }
+}
+
+run {
+    classpath += files("build/siardcmd")
 }
 
 test {
     useJUnitPlatform()
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-
-    environment "JAVA_TREE_SITTER", "${project.projectDir.toString()}/libjava-tree-sitter.so"
 }

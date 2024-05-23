@@ -1,10 +1,12 @@
 package no.nr.dbspec;
 
+import org.treesitter.TSNode;
+
 public class SemanticError extends Error {
     String reason;
-    Node node;
+    TSNode node;
 
-    public SemanticError(Node node, String reason) {
+    public SemanticError(TSNode node, String reason) {
         this.node = node;
         this.reason = reason;
     }

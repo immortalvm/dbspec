@@ -1,63 +1,90 @@
 package no.nr.dbspec;
 
-import java.io.BufferedReader;
+import ch.admin.bar.siard2.cmd.SiardFromDb;
+
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Siard {
-    public static boolean VIEWS_AS_TABLES = false; // TODO: Does this make sense?
-    Dbms dbms;
-    File jarDir;
-    Log log;
+    private static final String SIARD_CMD_DRIVERS_PROPERTY = "ch.admin.bar.siard2.cmd.drivers";
+    private static final String SIARD_CMD_LOG_PROPERTY = "java.util.logging.config.file";
+    private final Dbms dbms;
+    private final Log log;
 
-    public Siard(Dbms dbms, File jarDir, Log log) {
+    public Siard(Dbms dbms, Log log) {
         this.dbms = dbms;
-        this.jarDir = jarDir;
         this.log = log;
     }
 
-    public void transfer(Connection conn, String siardFilename, String lobFoldername) throws SiardError {
+    private List<String> fileProperty(String property, String resourceName) throws URISyntaxException {
+        String value = System.getProperty(property);
+        if (value == null) {
+            URL url = getClass().getResource(resourceName);
+            assert url != null;
+            if (url.toURI().getScheme().equals("file")) {
+                value = url.getPath();
+            }
+        }
+        return value == null ? Collections.emptyList()
+                : Collections.singletonList("-D" + property + "=" + value);
+    }
+
+    public void transfer(Connection conn, String siardFilename) throws SiardError {
         try {
-            File siardJarFile = new File(new File(jarDir, "lib"), "siardcmd.jar");
-            String mimeType = ""; // TODO: what should be the value of mimeType
-            String jdbcUrl = conn.getMetaData().getURL().toString();
+            String jdbcUrl = conn.getMetaData().getURL();
             String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
             String dbPassword = dbms.connectionParameters.get(conn).getProperty("password");
             List<String> cmd = new ArrayList<String>();
-            cmd.add("java");
+
+            // https://stackoverflow.com/a/61860951
+            cmd.add(ProcessHandle.current().info().command().orElseThrow());
             cmd.add("-cp");
-            cmd.add(siardJarFile.getAbsolutePath());
-            cmd.add("ch.admin.bar.siard2.cmd.SiardFromDb");
+            cmd.add(System.getProperty("java.class.path"));
+
+            // Compatibility with JAVA 17 and later, cf. https://github.com/keeps/dbptk-developer
+            cmd.add("--add-opens"); cmd.add("java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED");
+            cmd.add("--add-opens"); cmd.add("java.xml/com.sun.org.apache.xalan.internal.xsltc.trax=ALL-UNNAMED");
+            cmd.add("-Dfile.encoding=UTF-8");
+
+            // SiardCmd config files
+            cmd.addAll(fileProperty(SIARD_CMD_DRIVERS_PROPERTY, "/etc/jdbcdrivers.properties"));
+            cmd.addAll(fileProperty(SIARD_CMD_LOG_PROPERTY, "/etc/logging.properties"));
+
+            cmd.add(SiardFromDb.class.getCanonicalName()); // Main class
+
+            // SiardFromDb options
             cmd.add("-o");
-            if (VIEWS_AS_TABLES) {
-                cmd.add("-v");
-            }
-            if (lobFoldername != null) {
-                String canonicalLobFolderName = canonicalPath(lobFoldername);
-                cmd.add(String.format("-x=%s", canonicalLobFolderName));
-                //    cmd.add(String.format("-m=%s", mimeType));
-                File theDir = new File(canonicalLobFolderName);
-                if (!theDir.exists()){
-                    theDir.mkdirs();
-                }
-            }
             cmd.add(String.format("-j=%s", jdbcUrl));
             cmd.add(String.format("-u=%s", dbUser));
             cmd.add(String.format("-p=%s", dbPassword));
             cmd.add(String.format("-s=%s", canonicalPath(siardFilename)));
-            String[] cmdstrings = cmd.toArray(String[]::new);
-            log.write(Log.DEBUG, "--- SIARD command: %s\n\n", String.join(" ", cmdstrings));
-            Runtime rt = Runtime.getRuntime();
-            Process p = rt.exec(cmdstrings);
+            log.write(Log.DEBUG, "--- Siard command: %s\n\n", String.join(" ", cmd));
+
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.redirectErrorStream(true);
+            boolean showOutput = log.getLevel() >= Log.DEBUG;
+            if (showOutput) {
+                pb.inheritIO();
+            }
+            Process p = pb.start();
             p.waitFor();
             if (p.exitValue() != 0) {
-                throw new SiardError(Script.streamToString(p.getErrorStream())
-                                     + Script.streamToString(p.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                sb.append("Exit value ").append(p.exitValue()).append(".");
+                if (!showOutput) {
+                    String ls = System.lineSeparator();
+                    String dashes = "-".repeat(72);
+                    sb.append(" Output:").append(ls).append(dashes).append(ls);
+                    sb.append(Script.streamToString(p.getInputStream()));
+                    sb.append(ls).append(dashes);
+                }
+                throw new SiardError(sb.toString());
             }
+
         } catch (SiardError e) {
             throw e;
         } catch(Exception e) {

@@ -1,10 +1,11 @@
 package no.nr.dbspec;
 
-public class AstError extends Error {
-    private static final long serialVersionUID = 1L;
-    Node node;
+import org.treesitter.TSNode;
 
-    AstError(Node node) {
+public class AstError extends Error {
+    TSNode node;
+
+    AstError(TSNode node) {
         this.node = node;
     }
 }

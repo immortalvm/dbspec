@@ -9,9 +9,10 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 public class RunInterpreter {
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         Options options = new Options();
-        Option verbosityOption = new Option("v", "verbosity", true, "verbosity level:\n0=fatal, 1=error, 2=warning, 3=info, 4=debug");
+        Option verbosityOption = new Option(
+                "v", "verbosity", true, "verbosity level:\n0=fatal, 1=error, 2=warning, 3=info, 4=debug");
         options.addOption(verbosityOption);
 
         CommandLine cmd = null;

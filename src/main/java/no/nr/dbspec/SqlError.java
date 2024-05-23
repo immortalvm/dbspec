@@ -1,10 +1,12 @@
 package no.nr.dbspec;
 
+import org.treesitter.TSNode;
+
 public class SqlError extends Error {
     String reason;
-    Node node;
+    TSNode node;
 
-    public SqlError(Node node, String reason) {
+    public SqlError(TSNode node, String reason) {
         this.node = node;
         this.reason = reason;
     }

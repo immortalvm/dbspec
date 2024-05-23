@@ -26,4 +26,14 @@ public class Log {
             System.out.format(message, (Object[])args);
         }
     }
+
+    public void maybePrintStackTrace(Throwable e) {
+        if (level >= Log.DEBUG) {
+            printStackTrace(e);
+        }
+    }
+    public void printStackTrace(Throwable e) {
+        //noinspection CallToPrintStackTrace
+        e.printStackTrace();
+    }
 }
