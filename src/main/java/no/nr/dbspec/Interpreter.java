@@ -1,9 +1,10 @@
 package no.nr.dbspec;
 
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -11,7 +12,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -24,6 +24,7 @@ import org.treesitter.TSNode;
 import org.treesitter.TSParser;
 import org.treesitter.TSTree;
 
+@SuppressWarnings("SameParameterValue")
 public class Interpreter {
     String source;
     TSTree tree;
@@ -32,44 +33,27 @@ public class Interpreter {
     Dbms dbms;
     Siard siard;
     Log log;
+    Path dir;
     Properties config = new Properties();
     final static String CONFIG_FILENAME = "dbspec.conf";
 
-    Interpreter(String filename, int verbosityLevel) {
-        try {
-            this.source = getDbSpecString(filename);
-            this.context = new Context();
-            this.connections = new Context();
-            this.dbms = new Dbms();
-            this.log = new Log(verbosityLevel);
-            this.siard = new Siard(this.dbms, this.log);
-            loadConfigFile(CONFIG_FILENAME);
-            log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
-
-            TSParser parser = new TSParser();
-            parser.setLanguage(new TreeSitterDbspec());
-
-            tree = parser.parseString(null, source);
-            log.write(Log.DEBUG, "AST: %s\n\n", tree.getRootNode().toString());
-        } catch (FileNotFoundException e) {
-            log.write(Log.FATAL, "File not found\n");
-        }
+    Interpreter(Log log, Path dir) {
+        this.context = new Context();
+        this.connections = new Context();
+        this.dbms = new Dbms();
+        this.log = log;
+        this.dir = dir;
+        this.siard = new Siard(this.dbms, this.log, dir);
+        loadConfigFile(CONFIG_FILENAME);
+        log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
     }
 
     void loadConfigFile(String fileName) {
         try {
-            config.load(new FileInputStream(fileName));
-        } catch (Exception e) {
-            log.write(Log.ERROR, "Unable to read configuration file '%s'\n", fileName);
+            config.load(new FileInputStream(dir.resolve(fileName).toFile()));
+        } catch (IOException e) {
+            log.write(Log.WARNING, "Unable to read configuration file '%s'\n", fileName);
         }
-    }
-
-    String getDbSpecString(String filename) throws FileNotFoundException {
-        File file = new File(filename);
-        Scanner s = new Scanner(file).useDelimiter("\\Z");
-        String result = s.next();
-        s.close();
-        return result;
     }
 
     void printNodeLines(TSNode n) {
@@ -101,8 +85,17 @@ public class Interpreter {
         } while (start < end);
     }
 
-    boolean interpret(int verbosityLevel) {
-        log.setLevel(verbosityLevel);
+    boolean interpret(Path file) {
+        try {
+            source = Files.readString(file);
+        } catch (IOException e) {
+            return false;
+        }
+        TSParser parser = new TSParser();
+        parser.setLanguage(new TreeSitterDbspec());
+        tree = parser.parseString(null, source);
+        log.write(Log.DEBUG, "AST: %s\n\n", () -> tree.getRootNode().toString());
+
         try {
             TSNode n = tree.getRootNode();
             log.write(Log.DEBUG, "Interpretation:\n\n");
@@ -135,11 +128,7 @@ public class Interpreter {
     }
 
     String indent(int level) {
-        String result = "";
-        for (int i = 0; i < level; i++) {
-            result += "  ";
-        }
-        return result;
+        return "  ".repeat(level);
     }
 
     // Methods corresponding to non-terminal AST nodes
@@ -265,7 +254,7 @@ public class Interpreter {
         }
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
-        Script.execute(n, (String)interpreterString, scriptString);
+        Script.execute(n, (String)interpreterString, scriptString, dir);
         log.write(Log.DEBUG, "%s* Executing using interpreter '%s': '%s'\n", indent(level), (String)interpreterString, scriptString);
     }
 
@@ -277,7 +266,7 @@ public class Interpreter {
         }
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
-        String scriptResult = Script.execute(n, (String)interpreterString, scriptString);
+        String scriptResult = Script.execute(n, (String)interpreterString, scriptString, dir);
         log.write(Log.DEBUG, "%s* Executing using interpreter %s: '%s'\n", indent(level), (String)interpreterString, scriptString);
         return scriptResult;
     }
@@ -848,30 +837,37 @@ public class Interpreter {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
 
+    @SuppressWarnings("unused")
     String interpretShortDescription(TSNode n, int level) {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
 
+    @SuppressWarnings("unused")
     String interpretEscapeSequence(TSNode n, int level) {
         return StringEscapeUtils.unescapeJava(source.substring(n.getStartByte(), n.getEndByte()));
     }
 
+    @SuppressWarnings("unused")
     String interpretStringContent(TSNode n, int level) {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
 
+    @SuppressWarnings("unused")
     String interpretRawContent(TSNode n, int level) {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
 
+    @SuppressWarnings("unused")
     String interpretComparisonOperator(TSNode n, int level) {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
 
+    @SuppressWarnings("unused")
     String interpretDotOperator(TSNode n, int level) {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
 
+    @SuppressWarnings("unused")
     BigInteger interpretInteger(TSNode n, int level) {
         String content = source.substring(n.getStartByte(), n.getEndByte());
         return new BigInteger(content);

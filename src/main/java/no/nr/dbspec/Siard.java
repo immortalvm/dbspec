@@ -2,10 +2,9 @@ package no.nr.dbspec;
 
 import ch.admin.bar.siard2.cmd.SiardFromDb;
 
-import java.io.File;
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.*;
 
@@ -14,10 +13,12 @@ public class Siard {
     private static final String SIARD_CMD_LOG_PROPERTY = "java.util.logging.config.file";
     private final Dbms dbms;
     private final Log log;
+    private final Path dir;
 
-    public Siard(Dbms dbms, Log log) {
+    public Siard(Dbms dbms, Log log, Path dir) {
         this.dbms = dbms;
         this.log = log;
+        this.dir = dir;
     }
 
     private List<String> fileProperty(String property, String resourceName) throws URISyntaxException {
@@ -61,11 +62,12 @@ public class Siard {
             cmd.add(String.format("-j=%s", jdbcUrl));
             cmd.add(String.format("-u=%s", dbUser));
             cmd.add(String.format("-p=%s", dbPassword));
-            cmd.add(String.format("-s=%s", canonicalPath(siardFilename)));
+            cmd.add(String.format("-s=%s", dir.resolve(siardFilename).toFile().getCanonicalPath()));
             log.write(Log.DEBUG, "--- Siard command: %s\n\n", String.join(" ", cmd));
 
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.redirectErrorStream(true);
+            ProcessBuilder pb = new ProcessBuilder(cmd)
+                    .redirectErrorStream(true)
+                    .directory(dir.toFile());
             boolean showOutput = log.getLevel() >= Log.DEBUG;
             if (showOutput) {
                 pb.inheritIO();
@@ -90,10 +92,5 @@ public class Siard {
         } catch(Exception e) {
             throw new SiardError(e.toString());
         }
-    }
-
-    private String canonicalPath(String filename) throws IOException {
-        File f = new File(filename);
-        return f.getCanonicalPath();
     }
 }

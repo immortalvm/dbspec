@@ -6,6 +6,7 @@ import java.io.*;
 import java.lang.InterruptedException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,7 +19,7 @@ public class Script {
     private static final boolean isPosix =
             FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
 
-    public static String execute(TSNode n, String interpreter, String script) {
+    public static String execute(TSNode n, String interpreter, String script, Path dir) {
         String result;
         try {
             // Create script and make it executable
@@ -44,7 +45,7 @@ public class Script {
             cmd.add(tempFile.getAbsolutePath());
 
             // Execute script and collect output
-            Process process = new ProcessBuilder(cmd).start();
+            Process process = new ProcessBuilder(cmd).directory(dir.toFile()).start();
             process.waitFor();
             if (process.exitValue() != 0) {
                 result = streamToString(process.getErrorStream());

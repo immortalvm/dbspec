@@ -8,14 +8,20 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public class RunInterpreter {
     public static void main(String[] args) {
-        Options options = new Options();
-        Option verbosityOption = new Option(
-                "v", "verbosity", true, "verbosity level:\n0=fatal, 1=error, 2=warning, 3=info, 4=debug");
-        options.addOption(verbosityOption);
+        Option vOpt = new Option(
+                "v", "verbosity", true,
+                "verbosity level:\n0=fatal, 1=error, 2=warning, 3=info, 4=debug");
+        Option dOpt = new Option("d", "directory", true, "working/root directory");
+        Options options = new Options()
+                .addOption(vOpt)
+                .addOption(dOpt);
 
-        CommandLine cmd = null;
+        CommandLine cmd;
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
         try {
@@ -23,15 +29,33 @@ public class RunInterpreter {
         } catch (ParseException e) {
             formatter.printHelp("java -jar dbspec.jar OPTIONS FILENAME", options);
             System.exit(3);
+            return; // Otherwise, cmd would have to be initialized.
         }
-        String verbosityLevelString = cmd.getOptionValue("verbosity");
-        int verbosityLevel = verbosityLevelString == null ? Log.INFO : Integer.parseInt(verbosityLevelString);
-        if (cmd.getArgs().length <= 0) {
-            System.out.format("Error: missing input filename\n");
+        Log log = new Log(Log.INFO); // Default log level
+
+        String verbosityLevelString = cmd.getOptionValue(vOpt);
+        if (verbosityLevelString != null) {
+            log.setLevel(Integer.parseInt(verbosityLevelString));
+        }
+
+        String dirString = cmd.getOptionValue(dOpt);
+        Path dir = Path.of(dirString == null ? System.getProperty("user.dir") : dirString);
+        if (!Files.isDirectory(dir)) {
+            log.write(Log.WARNING, "Error: The directory does not exist: " + dir);
+            System.exit(4);
+        }
+        if (cmd.getArgs().length == 0) {
+            log.write(Log.WARNING, "Error: missing input filename");
             System.exit(2);
         }
-        Interpreter i = new Interpreter(cmd.getArgs()[0], verbosityLevel);
-        if (!i.interpret(verbosityLevel)) {
+        Path file = dir.resolve(cmd.getArgs()[0]);
+        if (!Files.exists(file)) {
+            log.write(Log.WARNING, "Error: missing input filename");
+            System.exit(2);
+        }
+
+        Interpreter i = new Interpreter(log, dir);
+        if (!i.interpret(file)) {
             System.exit(1);
         }
     }

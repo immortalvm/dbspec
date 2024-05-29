@@ -1,5 +1,7 @@
 package no.nr.dbspec;
 
+import java.util.function.Supplier;
+
 public class Log {
     static final int FATAL = 0;
     static final int ERROR = 1;
@@ -23,7 +25,13 @@ public class Log {
 
     public void write(int level, String message, Object... args) {
         if (level <= this.level) {
-            System.out.format(message, (Object[])args);
+            System.out.format(message, args);
+        }
+    }
+
+    public void write(int level, String message, Supplier<Object> arg) {
+        if (level <= this.level) {
+            System.out.format(message, arg.get());
         }
     }
 
@@ -32,6 +40,7 @@ public class Log {
             printStackTrace(e);
         }
     }
+
     public void printStackTrace(Throwable e) {
         //noinspection CallToPrintStackTrace
         e.printStackTrace();
