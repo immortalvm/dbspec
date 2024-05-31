@@ -30,7 +30,7 @@ repositories {
     }
 }
 
-tasks.register("download_siardcmd.zip") {
+tasks.register("download_siardcmd.zip", Download) {
     // outputs.file("download/siardcmd.zip")
     src("https://github.com/sfa-siard/SiardCmd/releases/download/2.2.1/siardcmd.zip")
     dest {
