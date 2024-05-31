@@ -23,6 +23,7 @@ public class RoaeMetadata {
             }
             // TODO: Indent
             log.write(Log.INFO, message);
+            return;
         }
         PrintWriter output = new PrintWriter(new FileWriter(path.toFile()));
         for (MdObject cObj : commands) {
