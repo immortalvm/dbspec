@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "no.nr"
-version = "1.2"
+version = "1.2-SNAPSHOT"
 
 java {
     sourceCompatibility = "11"
