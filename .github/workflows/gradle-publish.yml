@@ -41,13 +41,8 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Build with Gradle
-      run: ./gradlew clean build -x download_siardcmd.zip
-
-    # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
-    # the publishing section of your build.gradle
-    - name: Publish to GitHub Packages
-      run: ./gradlew publish
+    - name: Build with Gradle and publish to GitHub Packages
+      run: ./gradlew clean build publish -x download_siardcmd.zip
       env:
         GITHUB_ACTOR: ${{ github.actor }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
