@@ -41,8 +41,16 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Build with Gradle and publish to GitHub Packages
-      run: ./gradlew clean build publish -x download_siardcmd.zip
+    - name: Build with Gradle
+      run: ./gradlew clean build -x download_siardcmd.zip
       env:
         GITHUB_ACTOR: ${{ github.actor }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload dbspec.zip as release asset
+      env:
+        GITHUB_ACTOR: ${{ github.actor }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mv build/distributions/dbspec-*.zip dbspec.zip
+        gh release upload ${{ github.ref_name }} dbspec.zip

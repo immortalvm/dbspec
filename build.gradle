@@ -1,7 +1,6 @@
 plugins {
     id("application")
     id("de.undercouch.download") version "5.6.0"
-    id("maven-publish")
 }
 
 group = "no.nr"
@@ -112,39 +111,4 @@ run {
 
 test {
     useJUnitPlatform()
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = "https://maven.pkg.github.com/immortalvm/dbspec"
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
-    }
-    publications {
-        // IntelliJ warnings can be ignored:
-        // https://youtrack.jetbrains.com/issue/IDEA-338343/Publishing-DSL-has-various-IDE-warnings-and-errors-with-Groovy-DSL
-        maven(MavenPublication) {
-            from components.java
-            pom {
-                name = "dbspec"
-                url = "https://github.com/immortalvm/tree-sitter-ng-dbspec"
-                description = "DbSpec parser bindings"
-                licenses {
-                    license {
-                        name = "CDDL"
-                    }
-                }
-                scm {
-                    connection = "scm:git:https://github.com/immortalvm/dbspec.git"
-                    developerConnection = "scm:git:https://github.com/immortalvm/dbspec.git"
-                    url = "https://github.com/immortalvm/dbspec"
-                }
-            }
-        }
-    }
 }
