@@ -105,6 +105,15 @@ application {
     }
 }
 
+// Skip dbspec-<version> top level directory
+distributions {
+    main {
+        contents {
+            into("/")
+        }
+    }
+}
+
 run {
     classpath += files("build/siardcmd")
 }
