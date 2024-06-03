@@ -34,7 +34,7 @@ public class Siard {
                 : Collections.singletonList("-D" + property + "=" + value);
     }
 
-    public void transfer(Connection conn, String siardFilename) throws SiardError {
+    public void transfer(Connection conn, String siardFilename, Log log) throws SiardError {
         try {
             String jdbcUrl = conn.getMetaData().getURL();
             String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
@@ -90,7 +90,8 @@ public class Siard {
         } catch (SiardError e) {
             throw e;
         } catch(Exception e) {
-            throw new SiardError(e.toString());
+            log.maybePrintStackTrace(e);
+            throw new SiardError(e.toString() + System.lineSeparator());
         }
     }
 }
