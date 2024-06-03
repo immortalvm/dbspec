@@ -347,7 +347,7 @@ public class Interpreter {
         String fileString = (String)file;
         log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, fileString);
         try {
-            siard.transfer(dbmsConnection, fileString, log);
+            siard.transfer(dbmsConnection, fileString);
         } catch (SiardError e) {
             String reason = "SIARD transfer failed";
             if (!e.getReason().isEmpty()) {
