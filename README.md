@@ -5,7 +5,8 @@ An interpreter for the DbSpec language.
 
 ## Building and running
 
-This is in the process of being updated. Stay tuned.
+The interpreter can be built (and run) using Gradle.
+This can be encapsulated using Docker build, see `Dockerfile`s in the root and example directories.
 
 
 ## Installing the DbSpec Emacs mode

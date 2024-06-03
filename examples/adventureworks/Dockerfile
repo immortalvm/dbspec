@@ -1,6 +1,6 @@
 #!/usr/bin/env -S docker build . --output=dist --file
 
-FROM nr/dbspec-ex:1.1 AS build
+FROM nr/dbspec-ex:1.2 AS build
 
 COPY adventure.dbspec .
 RUN /etc/init.d/postgresql start \
