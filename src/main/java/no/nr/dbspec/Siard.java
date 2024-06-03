@@ -25,8 +25,7 @@ public class Siard {
         String value = System.getProperty(property);
         if (value == null) {
             URL url = getClass().getResource(resourceName);
-            assert url != null;
-            if (url.toURI().getScheme().equals("file")) {
+            if (url != null && "file".equals(url.toURI().getScheme())) {
                 value = url.getPath();
             }
         }
