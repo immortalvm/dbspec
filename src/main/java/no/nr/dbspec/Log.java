@@ -3,11 +3,11 @@ package no.nr.dbspec;
 import java.util.function.Supplier;
 
 public class Log {
-    static final int FATAL = 0;
-    static final int ERROR = 1;
-    static final int WARNING = 2;
-    static final int INFO = 3;
-    static final int DEBUG = 4;
+    public static final int FATAL = 0;
+    public static final int ERROR = 1;
+    public static final int WARNING = 2;
+    public static final int INFO = 3;
+    public static final int DEBUG = 4;
 
     int level;
 

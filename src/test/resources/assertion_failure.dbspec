@@ -1,0 +1,3 @@
+# Expected exit status code: 1
+
+Assert 1 == 0

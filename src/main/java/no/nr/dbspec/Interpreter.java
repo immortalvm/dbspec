@@ -37,7 +37,7 @@ public class Interpreter {
     Properties config = new Properties();
     final static String CONFIG_FILENAME = "dbspec.conf";
 
-    Interpreter(Log log, Path dir) {
+    public Interpreter(Log log, Path dir) {
         this.context = new Context();
         this.connections = new Context();
         this.dbms = new Dbms();
@@ -85,7 +85,7 @@ public class Interpreter {
         } while (start < end);
     }
 
-    boolean interpret(Path file) {
+    public boolean interpret(Path file) {
         try {
             source = Files.readString(file);
         } catch (IOException e) {
@@ -849,6 +849,7 @@ public class Interpreter {
 
     // Methods corresponding to terminal AST nodes
 
+    @SuppressWarnings("unused")
     String interpretIdentifier(TSNode n, int level) {
         return source.substring(n.getStartByte(), n.getEndByte());
     }
