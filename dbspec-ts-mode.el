@@ -76,6 +76,11 @@
   "Major mode for editing DbSpec, powered by tree-sitter."
   :group 'dbspec
 
+  ;; TODO: Is there a better way to ensure this?
+  (if (not (eq buffer-file-coding-system 'utf-8-unix))
+      ;; This will mark the buffer as modified.
+      (set-buffer-file-coding-system 'utf-8-unix))
+
   (unless (treesit-ready-p 'dbspec)
     (error "Tree-sitter for DbSpec isn't available"))
 
