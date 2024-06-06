@@ -91,6 +91,8 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("com.h2database:h2:2.2.224")
+    testImplementation("org.json:json:20240303")
 
     // https://stackoverflow.com/a/77605392
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

@@ -1,6 +1,5 @@
 package no.nr.dbspec;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -26,34 +25,28 @@ import org.treesitter.TSTree;
 
 @SuppressWarnings("SameParameterValue")
 public class Interpreter {
-    String source;
-    TSTree tree;
-    Context context;
-    Context connections;
-    Dbms dbms;
-    Siard siard;
-    Log log;
-    Path dir;
-    Properties config = new Properties();
-    final static String CONFIG_FILENAME = "dbspec.conf";
+    private final ScriptRunner scriptRunner;
+    private final Path dir;
+    private final Log log;
+    private final Properties config;
+    private final Context context;
+    private final Context connections;
+    private final Dbms dbms;
+    private final Siard siard;
 
-    public Interpreter(Log log, Path dir) {
+    private String source;
+    private TSTree tree;
+
+    public Interpreter(Log log, Path dir, ScriptRunner scriptRunner, Properties config) {
+        this.scriptRunner = scriptRunner;
         this.context = new Context();
         this.connections = new Context();
         this.dbms = new Dbms();
         this.log = log;
         this.dir = dir;
+        this.config = config;
         this.siard = new Siard(this.dbms, this.log, dir);
-        loadConfigFile(CONFIG_FILENAME);
         log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
-    }
-
-    void loadConfigFile(String fileName) {
-        try {
-            config.load(new FileInputStream(dir.resolve(fileName).toFile()));
-        } catch (IOException e) {
-            log.write(Log.WARNING, "Unable to read configuration file '%s'\n", fileName);
-        }
     }
 
     void printNodeLines(TSNode n) {
@@ -254,7 +247,7 @@ public class Interpreter {
         }
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
-        Script.execute(n, (String)interpreterString, scriptString, dir);
+        scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
         log.write(Log.DEBUG, "%s* Executing using interpreter '%s': '%s'\n", indent(level), (String)interpreterString, scriptString);
     }
 
@@ -266,7 +259,7 @@ public class Interpreter {
         }
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
-        String scriptResult = Script.execute(n, (String)interpreterString, scriptString, dir);
+        String scriptResult = scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
         log.write(Log.DEBUG, "%s* Executing using interpreter %s: '%s'\n", indent(level), (String)interpreterString, scriptString);
         return scriptResult;
     }

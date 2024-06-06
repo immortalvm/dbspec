@@ -80,7 +80,7 @@ public class Siard {
                     String ls = System.lineSeparator();
                     String dashes = "-".repeat(72);
                     sb.append(" Output:").append(ls).append(dashes).append(ls);
-                    sb.append(Script.streamToString(p.getInputStream()));
+                    sb.append(Utils.streamToString(p.getInputStream()));
                     sb.append(ls).append(dashes);
                 }
                 throw new SiardError(sb.toString());

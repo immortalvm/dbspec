@@ -8,8 +8,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
 
 public class RunInterpreter {
     public static void main(String[] args) {
@@ -54,9 +58,26 @@ public class RunInterpreter {
             System.exit(2);
         }
 
-        Interpreter i = new Interpreter(log, dir);
+        Properties config;
+        try {
+             config = loadConfigFile(dir);
+        } catch (IOException e) {
+            log.write(Log.WARNING, "Unable to read configuration file '%s'\n", CONFIG_FILENAME);
+            config = new Properties();
+        }
+
+        Interpreter i = new Interpreter(log, dir, new ScriptRunnerImpl(), config);
         if (!i.interpret(file)) {
             System.exit(1);
         }
     }
+
+    public static final String CONFIG_FILENAME = "dbspec.conf";
+
+    public static Properties loadConfigFile(Path dir) throws IOException {
+        Properties config = new Properties();
+        config.load(new FileInputStream(dir.resolve(CONFIG_FILENAME).toFile()));
+        return config;
+    }
+
 }

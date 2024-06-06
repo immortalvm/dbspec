@@ -1,13 +1,16 @@
-import no.nr.dbspec.Interpreter;
-import no.nr.dbspec.Log;
+package no.nr.dbspec;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.*;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
+import java.sql.SQLException;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -18,7 +21,8 @@ public class InterpreterTests {
 
     private static final Pattern statusCodePattern;
     private static final PathMatcher dbspecMatcher;
-    private static final Path confPath;
+    private static final Path dir;
+    private static final Properties properties;
 
     static {
         statusCodePattern = Pattern.compile("^# Expected exit status code: ([0-9]+)$");
@@ -27,12 +31,13 @@ public class InterpreterTests {
         try {
             // This is mainly a trick to find the directory containing the test .dbspec files.
             // Our tests will not work if these resources exist inside a .jar.
-            URL confUrl = InterpreterTests.class.getResource("dbspec.conf");
-            assertNotNull(confUrl);
+            URL confUrl = InterpreterTests.class.getResource("/" + RunInterpreter.CONFIG_FILENAME);
+            assert confUrl != null;
             URI confUri = confUrl.toURI();
             assert "file".equals(confUri.getScheme());
-            confPath = Path.of(confUri);
-        } catch (URISyntaxException e) {
+            dir = Path.of(confUri).getParent();
+            properties = RunInterpreter.loadConfigFile(dir);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -41,18 +46,29 @@ public class InterpreterTests {
         // Wrapping this in a try-with-resource should be unnecessary.
         //noinspection resource
         return Files
-                .list(confPath.getParent())
+                .list(dir)
                 .map(Path::getFileName)
                 .filter(dbspecMatcher::matches)
                 .map(Path::toString);
     }
 
-    Log log = new Log(Log.INFO);
+    private final Log log = new Log(Log.INFO);
+
+    private Database database;
+
+    @BeforeEach
+    void createTestDb() throws SQLException {
+        database = new Database(properties.getProperty("connection_string"));
+    }
+
+    @AfterEach
+    void closeTestDb() throws Exception {
+        database.close();
+    }
 
     @ParameterizedTest
     @MethodSource
     void test_dbspec_files(String filename) throws Exception {
-        Path dir = confPath.getParent();
         Path path = dir.resolve(filename);
         File file = path.toFile();
 
@@ -61,7 +77,7 @@ public class InterpreterTests {
         assertTrue(m.matches());
         int expectedStatus = Integer.parseInt(m.toMatchResult().group(1));
 
-        Interpreter i = new Interpreter(log, dir);
+        Interpreter i = new Interpreter(log, dir, new ScriptRunnerFake(database), properties);
         boolean res = i.interpret(path);
         // TODO: Differentiate
         int exitStatusCode = res ? 0 : 1;
