@@ -8,14 +8,14 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.*;
 
-public class Siard {
+public class SiardExtractorImpl implements SiardExtractor {
     private static final String SIARD_CMD_DRIVERS_PROPERTY = "ch.admin.bar.siard2.cmd.drivers";
     private static final String SIARD_CMD_LOG_PROPERTY = "java.util.logging.config.file";
     private final Dbms dbms;
     private final Log log;
     private final Path dir;
 
-    public Siard(Dbms dbms, Log log, Path dir) {
+    public SiardExtractorImpl(Dbms dbms, Log log, Path dir) {
         this.dbms = dbms;
         this.log = log;
         this.dir = dir;
@@ -33,6 +33,7 @@ public class Siard {
                 : Collections.singletonList("-D" + property + "=" + value);
     }
 
+    @Override
     public void transfer(Connection conn, String siardFilename) throws SiardError {
         try {
             String jdbcUrl = conn.getMetaData().getURL();

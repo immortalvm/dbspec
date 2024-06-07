@@ -16,14 +16,11 @@ public class ScriptRunnerFake implements ScriptRunner {
 
     @Override
     public String execute(TSNode n, String interpreter, String script, Path dir) {
-        try {
-            int id = database.trace(Map.of(
-                    "interpreter", interpreter,
-                    "script", script,
-                    "path", dir.toString()));
-            return Integer.toString(id);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        int id = database.trace(Map.of(
+                "type", "script",
+                "interpreter", interpreter,
+                "script", script,
+                "path", dir.toString()));
+        return Integer.toString(id);
     }
 }

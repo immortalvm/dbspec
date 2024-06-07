@@ -1,7 +1,7 @@
 package no.nr.dbspec;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -23,6 +23,7 @@ public class InterpreterTests {
     private static final PathMatcher dbspecMatcher;
     private static final Path dir;
     private static final Properties properties;
+    private static final Database database;
 
     static {
         statusCodePattern = Pattern.compile("^# Expected exit status code: ([0-9]+)$");
@@ -37,6 +38,9 @@ public class InterpreterTests {
             assert "file".equals(confUri.getScheme());
             dir = Path.of(confUri).getParent();
             properties = RunInterpreter.loadConfigFile(dir);
+            // We wanted to do this before and after each test,
+            // but H2 still does not reliably give us a fresh (empty) database.
+            database = new Database(properties.getProperty("connection_string"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -52,19 +56,18 @@ public class InterpreterTests {
                 .map(Path::toString);
     }
 
-    private final Log log = new Log(Log.INFO);
-
-    private Database database;
-
-    @BeforeEach
-    void createTestDb() throws SQLException {
-        database = new Database(properties.getProperty("connection_string"));
+    @AfterEach
+    void reset() throws SQLException {
+        // NB. Only the "trace" table is actually reset.
+        database.resetTrace();
     }
 
-    @AfterEach
-    void closeTestDb() throws Exception {
+    @AfterAll
+    static void closeDatabase() throws Exception {
         database.close();
     }
+
+    private final Log log = new Log(Log.INFO);
 
     @ParameterizedTest
     @MethodSource
@@ -77,7 +80,13 @@ public class InterpreterTests {
         assertTrue(m.matches());
         int expectedStatus = Integer.parseInt(m.toMatchResult().group(1));
 
-        Interpreter i = new Interpreter(log, dir, new ScriptRunnerFake(database), properties);
+        Interpreter i = new Interpreter(
+                log,
+                dir,
+                new ScriptRunnerFake(database),
+                properties,
+                new SiardExtractorFake(database),
+                new Dbms());
         boolean res = i.interpret(path);
         // TODO: Differentiate
         int exitStatusCode = res ? 0 : 1;

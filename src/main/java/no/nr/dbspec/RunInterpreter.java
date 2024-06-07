@@ -9,7 +9,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,7 +65,13 @@ public class RunInterpreter {
             config = new Properties();
         }
 
-        Interpreter i = new Interpreter(log, dir, new ScriptRunnerImpl(), config);
+        Dbms dbms = new Dbms();
+        Interpreter i = new Interpreter(log,
+                dir,
+                new ScriptRunnerImpl(),
+                config,
+                new SiardExtractorImpl(dbms, log, dir),
+                dbms);
         if (!i.interpret(file)) {
             System.exit(1);
         }

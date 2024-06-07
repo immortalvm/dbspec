@@ -32,20 +32,26 @@ public class Interpreter {
     private final Context context;
     private final Context connections;
     private final Dbms dbms;
-    private final Siard siard;
+    private final SiardExtractor siardExtractor;
 
     private String source;
     private TSTree tree;
 
-    public Interpreter(Log log, Path dir, ScriptRunner scriptRunner, Properties config) {
+    public Interpreter(
+            Log log,
+            Path dir,
+            ScriptRunner scriptRunner,
+            Properties config,
+            SiardExtractor siardExtractor,
+            Dbms dbms) {
         this.scriptRunner = scriptRunner;
         this.context = new Context();
         this.connections = new Context();
-        this.dbms = new Dbms();
+        this.dbms = dbms;
         this.log = log;
         this.dir = dir;
         this.config = config;
-        this.siard = new Siard(this.dbms, this.log, dir);
+        this.siardExtractor = siardExtractor;
         log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
     }
 
@@ -340,7 +346,7 @@ public class Interpreter {
         String fileString = (String)file;
         log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, fileString);
         try {
-            siard.transfer(dbmsConnection, fileString);
+            siardExtractor.transfer(dbmsConnection, fileString);
         } catch (SiardError e) {
             String reason = "SIARD transfer failed";
             if (!e.getReason().isEmpty()) {

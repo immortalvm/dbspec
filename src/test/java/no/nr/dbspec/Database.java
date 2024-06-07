@@ -3,7 +3,11 @@ package no.nr.dbspec;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Map;
 
 public class Database implements AutoCloseable {
@@ -11,14 +15,21 @@ public class Database implements AutoCloseable {
     public final Connection connection;
 
     private final PreparedStatement insertStatement;
+    private final PreparedStatement truncateStatement;
 
     public Database(String connectionString) throws SQLException {
-        connection = DriverManager.getConnection(
-                connectionString + ";INIT=runscript from 'classpath:/init.sql'");
+        String url = connectionString + ";DB_CLOSE_DELAY=0;INIT=CREATE TABLE IF NOT EXISTS trace " +
+                "(id int AUTO_INCREMENT NOT NULL, data json NOT NULL, PRIMARY KEY (id))";
+        connection = DriverManager.getConnection(url);
         insertStatement = connection.prepareStatement(
                 "INSERT INTO trace (`data`) VALUES (? FORMAT JSON)",
-                new String[] {"id"});
+                new String[]{"id"});
         insertStatement.getGeneratedKeys();
+        truncateStatement = connection.prepareStatement("TRUNCATE TABLE trace RESTART IDENTITY");
+    }
+
+    public void resetTrace() throws SQLException {
+        truncateStatement.executeUpdate();
     }
 
     @Override
@@ -26,31 +37,35 @@ public class Database implements AutoCloseable {
         connection.close();
     }
 
-    public int trace(Map<String, String> map) throws SQLException {
+    public int trace(Map<String, String> map) {
         return trace(new JSONObject(map));
     }
 
-    public int trace(String... strings) throws SQLException {
+    public int trace(String... strings) {
         return trace(new JSONArray(strings));
     }
 
-    public int trace(JSONArray arr) throws SQLException {
+    public int trace(JSONArray arr) {
         return trace(arr.toString());
     }
 
-    public int trace(JSONObject obj) throws SQLException {
+    public int trace(JSONObject obj) {
         return trace(obj.toString());
     }
 
-    private int trace(String jsonString) throws SQLException {
-        insertStatement.setString(1, jsonString);
-        int res = insertStatement.executeUpdate();
-        assert res == 1;
-        ResultSet keys = insertStatement.getGeneratedKeys();
-        if (keys.next()) {
-            return keys.getInt(1);
-        } else {
-            throw new SQLException("No ID obtained.");
+    private int trace(String jsonString) {
+        try {
+            insertStatement.setString(1, jsonString);
+            int res = insertStatement.executeUpdate();
+            assert res == 1;
+            ResultSet keys = insertStatement.getGeneratedKeys();
+            if (keys.next()) {
+                return keys.getInt(1);
+            } else {
+                throw new SQLException("No ID obtained.");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 }
