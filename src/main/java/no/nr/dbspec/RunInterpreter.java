@@ -71,7 +71,9 @@ public class RunInterpreter {
                 new ScriptRunnerImpl(),
                 config,
                 new SiardExtractorImpl(dbms, log, dir),
-                dbms, new SiardMetadataAdjusterImpl());
+                dbms,
+                new SiardMetadataAdjusterImpl(),
+                new RoaeProducerImpl());
         if (!i.interpret(file)) {
             System.exit(1);
         }

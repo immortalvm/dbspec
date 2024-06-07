@@ -9,8 +9,9 @@ import java.util.List;
 
 import no.nr.dbspec.MdObject.MdType;
 
-public class RoaeMetadata {
-    public static void updateMetadata(String roaeFilename, MdObject mdo, Log log, Path dir) throws IOException {
+public class RoaeProducerImpl implements RoaeProducer {
+    @Override
+    public void updateMetadata(String roaeFilename, MdObject mdo, Log log, Path dir) throws IOException {
         Path path = dir.resolve(roaeFilename);
         List<MdObject> commands = mdo.getChildren(MdType.COMMAND);
         if (commands.isEmpty()) {

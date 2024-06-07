@@ -29,6 +29,8 @@ public class InterpreterTests {
 
     private static final SiardMetadataAdjusterFake adjuster;
 
+    private static final RoaeProducer roaeProducer;
+
     static {
         statusCodePattern = Pattern.compile("^# Expected exit status code: ([0-9]+)$");
         dbspecMatcher = FileSystems.getDefault().getPathMatcher("glob:*.dbspec");
@@ -51,6 +53,7 @@ public class InterpreterTests {
             scriptRunner = new ScriptRunnerFake(database);
             extractor = new SiardExtractorFake(database);
             adjuster = new SiardMetadataAdjusterFake(database);
+            roaeProducer = new RoaeProducerFake(database);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -97,7 +100,8 @@ public class InterpreterTests {
                 properties,
                 extractor,
                 new Dbms(),
-                adjuster);
+                adjuster,
+                roaeProducer);
         boolean res = i.interpret(path);
         // TODO: Differentiate
         int exitStatusCode = res ? 0 : 1;

@@ -34,6 +34,7 @@ public class Interpreter {
     private final Dbms dbms;
     private final SiardExtractor siardExtractor;
     private final SiardMetadataAdjuster siardMetadataAdjuster;
+    private final RoaeProducer roaeProducer;
 
     private String source;
     private TSTree tree;
@@ -45,7 +46,8 @@ public class Interpreter {
             Properties config,
             SiardExtractor siardExtractor,
             Dbms dbms,
-            SiardMetadataAdjuster siardMetadataAdjuster) {
+            SiardMetadataAdjuster siardMetadataAdjuster,
+            RoaeProducer roaeProducer) {
         this.scriptRunner = scriptRunner;
         this.context = new Context();
         this.connections = new Context();
@@ -55,6 +57,7 @@ public class Interpreter {
         this.config = config;
         this.siardExtractor = siardExtractor;
         this.siardMetadataAdjuster = siardMetadataAdjuster;
+        this.roaeProducer = roaeProducer;
     }
 
     void printNodeLines(TSNode n) {
@@ -367,7 +370,7 @@ public class Interpreter {
             String roaeFileString = skipExtension(fileString) + ".roae";
             log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), (String)roaeFileString);
             try {
-                RoaeMetadata.updateMetadata(roaeFileString, md, log, dir);
+                roaeProducer.updateMetadata(roaeFileString, md, log, dir);
             } catch (IOException e) {
                 throw new SemanticError(n, "Unable to write to " + roaeFileString + "\n" + e.getMessage());
             }
