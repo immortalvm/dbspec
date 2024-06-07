@@ -14,7 +14,7 @@ public class Database implements AutoCloseable {
 
     public Database(String connectionString) throws SQLException {
         connection = DriverManager.getConnection(
-                connectionString + ";INIT=runscript from 'classpath:/init_test.sql'");
+                connectionString + ";INIT=runscript from 'classpath:/init.sql'");
         insertStatement = connection.prepareStatement(
                 "INSERT INTO trace (`data`) VALUES (? FORMAT JSON)",
                 new String[] {"id"});
