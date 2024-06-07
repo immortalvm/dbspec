@@ -1,9 +1,13 @@
 # Expected exit status code: 0
 
 Parameters:
-	connection_string
+	url
+	user
+	password
 
-Set conn = connection to connection_string
+Set conn = connection to url with:
+	user = user
+	password = password
 
 
 Log "Pretend calling non-sql scripts"

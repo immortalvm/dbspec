@@ -24,6 +24,10 @@ public class InterpreterTests {
     private static final Path dir;
     private static final Properties properties;
     private static final Database database;
+    private static final ScriptRunnerFake scriptRunner;
+    private static final SiardExtractorFake extractor;
+
+    private static final SiardMetadataAdjusterFake adjuster;
 
     static {
         statusCodePattern = Pattern.compile("^# Expected exit status code: ([0-9]+)$");
@@ -40,7 +44,13 @@ public class InterpreterTests {
             properties = RunInterpreter.loadConfigFile(dir);
             // We wanted to do this before and after each test,
             // but H2 still does not reliably give us a fresh (empty) database.
-            database = new Database(properties.getProperty("connection_string"));
+            database = new Database(
+                    properties.getProperty("url"),
+                    properties.getProperty("user"),
+                    properties.getProperty("password"));
+            scriptRunner = new ScriptRunnerFake(database);
+            extractor = new SiardExtractorFake(database);
+            adjuster = new SiardMetadataAdjusterFake(database);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -83,10 +93,11 @@ public class InterpreterTests {
         Interpreter i = new Interpreter(
                 log,
                 dir,
-                new ScriptRunnerFake(database),
+                scriptRunner,
                 properties,
-                new SiardExtractorFake(database),
-                new Dbms());
+                extractor,
+                new Dbms(),
+                adjuster);
         boolean res = i.interpret(path);
         // TODO: Differentiate
         int exitStatusCode = res ? 0 : 1;

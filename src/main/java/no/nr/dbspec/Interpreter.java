@@ -33,6 +33,7 @@ public class Interpreter {
     private final Context connections;
     private final Dbms dbms;
     private final SiardExtractor siardExtractor;
+    private final SiardMetadataAdjuster siardMetadataAdjuster;
 
     private String source;
     private TSTree tree;
@@ -43,7 +44,8 @@ public class Interpreter {
             ScriptRunner scriptRunner,
             Properties config,
             SiardExtractor siardExtractor,
-            Dbms dbms) {
+            Dbms dbms,
+            SiardMetadataAdjuster siardMetadataAdjuster) {
         this.scriptRunner = scriptRunner;
         this.context = new Context();
         this.connections = new Context();
@@ -52,7 +54,7 @@ public class Interpreter {
         this.dir = dir;
         this.config = config;
         this.siardExtractor = siardExtractor;
-        log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
+        this.siardMetadataAdjuster = siardMetadataAdjuster;
     }
 
     void printNodeLines(TSNode n) {
@@ -90,6 +92,7 @@ public class Interpreter {
         } catch (IOException e) {
             return false;
         }
+        log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
         TSParser parser = new TSParser();
         parser.setLanguage(new TreeSitterDbspec());
         tree = parser.parseString(null, source);
@@ -359,7 +362,7 @@ public class Interpreter {
             log.write(Log.WARNING, "%s* SIARD metadata not found\n", indent(level));
         } else {
             log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
-            SiardMetadata.updateMetadata(fileString, md, dbmsConnection, n);
+            siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection, n);
 
             String roaeFileString = skipExtension(fileString) + ".roae";
             log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), (String)roaeFileString);
@@ -759,6 +762,7 @@ public class Interpreter {
         }).collect(Collectors.joining());
     }
 
+    @SuppressWarnings("unused")
     String interpretShortDescr(TSNode n, int level, Context ctx) {
         TSNode description = n.getChildByFieldName("description");
         return description.isNull() ? null : interpretShortDescription(description, level + 1);

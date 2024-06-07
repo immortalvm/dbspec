@@ -13,13 +13,9 @@ public class SiardExtractorFake implements SiardExtractor {
 
     @Override
     public void transfer(Connection conn, String siardFilename) {
-        try {
-            database.trace(Map.of(
-                    "type", "extraction",
-                    "url", conn.getMetaData().getURL(),
-                    "filename", siardFilename));
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        database.trace(Map.of(
+                "type", "extraction",
+                "url", Database.getUrl(conn),
+                "filename", siardFilename));
     }
 }

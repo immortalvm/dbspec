@@ -22,7 +22,7 @@ public class RoaeMetadata {
                 message += "No ROAE file created.";
             }
             // TODO: Indent
-            log.write(Log.INFO, message);
+            log.write(Log.INFO, message + "\n");
             return;
         }
         PrintWriter output = new PrintWriter(new FileWriter(path.toFile()));

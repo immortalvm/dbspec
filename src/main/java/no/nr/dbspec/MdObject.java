@@ -40,8 +40,10 @@ public class MdObject {
     }
 
     public String toString() {
-        return String.format("(%s %s \"%s\"%S%s)", type, name, documentation.trim(), children.size() == 0 ? "" : " ",
-                             children.stream().map((x) -> x.toString()).collect(Collectors.joining(" ")));
+        return String.format(
+                "(%s %s \"%s\"%S%s)",
+                type, name, documentation.trim(), children.isEmpty() ? "" : " ",
+                children.stream().map(MdObject::toString).collect(Collectors.joining(" ")));
     }
 
     public List<MdObject> getChildren(MdType type) {

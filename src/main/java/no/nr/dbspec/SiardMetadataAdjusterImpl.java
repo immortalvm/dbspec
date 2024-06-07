@@ -20,9 +20,10 @@ import ch.admin.bar.siard2.api.Schema;
 import ch.admin.bar.siard2.api.primary.ArchiveImpl;
 import org.treesitter.TSNode;
 
-public class SiardMetadata {
+public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
-    public static void updateMetadata(String siardFilename, MdObject mdo, Connection connection, TSNode n) {
+    @Override
+    public void updateMetadata(String siardFilename, MdObject mdo, Connection connection, TSNode n) {
         Archive archive = ArchiveImpl.newInstance();
         File siardFile = new File(siardFilename);
         try {
@@ -36,7 +37,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateDbLevelMetadata(MetaData md, MdObject mdo, Connection connection, TSNode n) {
+    private void updateDbLevelMetadata(MetaData md, MdObject mdo, Connection connection, TSNode n) {
         String x;
         x = getInfoField(mdo, "dbname");
         if (x == null) {
@@ -54,7 +55,7 @@ public class SiardMetadata {
         if (null != (x = getInfoField(mdo, "dataOriginTimespan"))) md.setDataOriginTimespan(x);
     }
 
-    static void updateArchiveMetadata(Archive archive, MdObject mdo) {
+    private void updateArchiveMetadata(Archive archive, MdObject mdo) {
         for (MdObject sObj : mdo.getChildren(MdType.SCHEMA)) {
             String name = sObj.getName();
             String documentation = sObj.getDocumentation();
@@ -71,7 +72,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateTableMetadata(MetaSchema schema, MdObject mdo) {
+    private void updateTableMetadata(MetaSchema schema, MdObject mdo) {
         for (MdObject tObj : mdo.getChildren(MdType.TABLE)) {
             String name = tObj.getName();
             String documentation = tObj.getDocumentation();
@@ -85,7 +86,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateTableColumnMetadata(MetaTable table, MdObject mdo) {
+    private void updateTableColumnMetadata(MetaTable table, MdObject mdo) {
         for (MdObject cObj : mdo.getChildren(MdType.COLUMN)) {
             String name = cObj.getName();
             String documentation = cObj.getDocumentation();
@@ -97,7 +98,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateViewMetadata(MetaSchema schema, MdObject mdo) {
+    private void updateViewMetadata(MetaSchema schema, MdObject mdo) {
         for (MdObject vObj : mdo.getChildren(MdType.VIEW)) {
             String name = vObj.getName();
             String documentation = vObj.getDocumentation();
@@ -109,7 +110,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateViewColumnMetadata(MetaView view, MdObject mdo) {
+    private void updateViewColumnMetadata(MetaView view, MdObject mdo) {
         for (MdObject cObj : mdo.getChildren(MdType.COLUMN)) {
             String name = cObj.getName();
             String documentation = cObj.getDocumentation();
@@ -121,7 +122,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateTypeMetadata(MetaSchema schema, MdObject mdo) {
+    private void updateTypeMetadata(MetaSchema schema, MdObject mdo) {
         for (MdObject tObj : mdo.getChildren(MdType.TYPE)) {
             String name = tObj.getName();
             String documentation = tObj.getDocumentation();
@@ -132,7 +133,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateFieldMetadata(MetaColumn column, MdObject mdo) {
+    private void updateFieldMetadata(MetaColumn column, MdObject mdo) {
         for (MdObject fObj : mdo.getChildren(MdType.FIELD)) {
             String name = fObj.getName();
             String documentation = fObj.getDocumentation();
@@ -147,7 +148,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateKeyMetadata(MetaTable table, MdObject mdo) {
+    private void updateKeyMetadata(MetaTable table, MdObject mdo) {
         for (MdObject kObj : mdo.getChildren(MdType.KEY)) {
             String name = kObj.getName();
             String documentation = kObj.getDocumentation();
@@ -158,7 +159,7 @@ public class SiardMetadata {
         }
     }
 
-    static void updateCheckMetadata(MetaTable table, MdObject mdo) {
+    private void updateCheckMetadata(MetaTable table, MdObject mdo) {
         for (MdObject cObj : mdo.getChildren(MdType.KEY)) {
             String name = cObj.getName();
             String documentation = cObj.getDocumentation();
@@ -169,7 +170,7 @@ public class SiardMetadata {
         }
     }
 
-    private static String getInfoField(MdObject mdo, String name) {
+    private String getInfoField(MdObject mdo, String name) {
         MdObject child = mdo.getChild(MdType.INFO, name);
         return child != null && child.getDocumentation().length() > 0 ? child.getDocumentation() : null;
     }

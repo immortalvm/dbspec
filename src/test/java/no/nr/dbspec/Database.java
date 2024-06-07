@@ -17,10 +17,10 @@ public class Database implements AutoCloseable {
     private final PreparedStatement insertStatement;
     private final PreparedStatement truncateStatement;
 
-    public Database(String connectionString) throws SQLException {
+    public Database(String connectionString, String user, String password) throws SQLException {
         String url = connectionString + ";DB_CLOSE_DELAY=0;INIT=CREATE TABLE IF NOT EXISTS trace " +
                 "(id int AUTO_INCREMENT NOT NULL, data json NOT NULL, PRIMARY KEY (id))";
-        connection = DriverManager.getConnection(url);
+        connection = DriverManager.getConnection(url, user, password);
         insertStatement = connection.prepareStatement(
                 "INSERT INTO trace (`data`) VALUES (? FORMAT JSON)",
                 new String[]{"id"});
@@ -64,6 +64,14 @@ public class Database implements AutoCloseable {
             } else {
                 throw new SQLException("No ID obtained.");
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String getUrl(Connection connection) {
+        try {
+            return connection.getMetaData().getURL();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
