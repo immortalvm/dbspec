@@ -26,9 +26,7 @@ public class InterpreterTests {
     private static final Database database;
     private static final ScriptRunnerFake scriptRunner;
     private static final SiardExtractorFake extractor;
-
     private static final SiardMetadataAdjusterFake adjuster;
-
     private static final RoaeProducer roaeProducer;
 
     static {

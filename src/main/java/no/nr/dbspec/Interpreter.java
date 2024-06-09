@@ -8,9 +8,12 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -300,10 +303,10 @@ public class Interpreter {
             throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
         }
         TSNode sql = n.getChildByFieldName("sql");
-        String sqlString = interpretRaw(sql, level + 1, ctx);
-        log.write(Log.DEBUG, "%s* Executing SQL on connection %s: '%s'\n", indent(level), connectionString, sqlString);
+        Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
+        log.write(Log.DEBUG, "%s* Executing SQL on connection %s: '%s'\n", indent(level), connectionString, pair.getKey());
         try {
-            dbms.executeSqlUpdate((Connection)dbmsConnection, sqlString);
+            dbms.executeSqlUpdate((Connection)dbmsConnection, pair);
         } catch (SQLException e) {
             throw new SqlError(n, e.getMessage());
         }
@@ -317,10 +320,10 @@ public class Interpreter {
             throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
         }
         TSNode sql = n.getChildByFieldName("sql");
-        String sqlString = interpretRaw(sql, level + 1, ctx);
-        log.write(Log.DEBUG, "%s* Executing SQL query on connection %s: '%s'\n", indent(level), connectionString, sqlString);
+        Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
+        log.write(Log.DEBUG, "%s* Executing SQL query on connection %s: '%s'\n", indent(level), connectionString, pair.getKey());
         try {
-            return dbms.executeSqlQuery((Connection)dbmsConnection, sqlString);
+            return dbms.executeSqlQuery((Connection)dbmsConnection, pair);
         } catch (SQLException e) {
             throw new SqlError(n, e.getMessage());
         }
@@ -753,14 +756,15 @@ public class Interpreter {
 
     String interpretString(TSNode n, int level, Context ctx) {
         return getChildren(n).map(c -> {
-            if (c.getType().equals("interpolation")) {
-                return interpretInterpolation(c, level + 1, ctx);
-            } else if (c.getType().equals("escape_sequence")) {
-                return interpretEscapeSequence(c, level + 1);
-            } else if (c.getType().equals("string_content")) {
-                return interpretStringContent(c, level + 1);
-            } else {
-                throw new AstError(n);
+            switch (c.getType()) {
+                case "interpolation":
+                    return interpretInterpolation(c, level + 1, ctx);
+                case "escape_sequence":
+                    return interpretEscapeSequence(c, level + 1);
+                case "string_content":
+                    return interpretStringContent(c, level + 1);
+                default:
+                    throw new AstError(n);
             }
         }).collect(Collectors.joining());
     }
@@ -772,21 +776,24 @@ public class Interpreter {
     }
 
     String interpretInterpolation(TSNode n, int level, Context ctx) {
-        return interpretInterpolationCommon(n, level, ctx);
+        String[] res = new String[1];
+        interpretInterpolation(n, level, ctx, s -> res[0] = s, i -> res[0] = i.toString());
+        return res[0];
     }
 
-    String interpretInterpolation2(TSNode n, int level, Context ctx) {
-        return interpretInterpolationCommon(n, level, ctx);
-    }
-
-    String interpretInterpolationCommon(TSNode n, int level, Context ctx) {
+    void interpretInterpolation(
+            TSNode n,
+            int level,
+            Context ctx,
+            Consumer<String> stringArg,
+            Consumer<BigInteger> intArg) {
         Object interpolatedObject = interpretBasicExpression(n.getNamedChild(0), level, ctx);
         if (interpolatedObject instanceof String) {
-            return (String)interpolatedObject;
+            stringArg.accept((String)interpolatedObject);
         } else if (interpolatedObject instanceof BigInteger) {
-            return String.valueOf((BigInteger)interpolatedObject);
+            intArg.accept((BigInteger)interpolatedObject);
         } else {
-            throw new SemanticError(n, "Interpolation must be String or BigInteger");
+            throw new SemanticError(n, "The interpolation expression must be a string or an integer");
         }
     }
 
@@ -822,6 +829,27 @@ public class Interpreter {
 
     String interpretRaw(TSNode n, int level, Context ctx) {
         StringBuilder sb = new StringBuilder();
+        interpretRawSegments(n, level, ctx, sb::append, null);
+        return sb.toString();
+    }
+
+    // We use Map.Entry since Java 11 has no built-in pair type
+    Map.Entry<String, List<Object>> interpretRawSql(TSNode n, int level, Context ctx) {
+        StringBuilder sb = new StringBuilder();
+        List<Object> args = new ArrayList<>();
+        interpretRawSegments(n, level, ctx, sb::append, x -> {
+            sb.append('?');
+            args.add(x);
+        });
+        return new AbstractMap.SimpleEntry<>(sb.toString(), args);
+    }
+
+    private void interpretRawSegments(
+            TSNode n,
+            int level,
+            Context ctx,
+            Consumer<String> literal,
+            Consumer<Object> argument) {
         int trailingNewlines = 0;
         int nc = n.getChildCount();
         for (int i = 0; i < nc; i++) {
@@ -829,28 +857,39 @@ public class Interpreter {
             if (!c.isNamed()) continue;
             if (c.getType().equals("raw_content")) {
                 String rc = interpretRawContent(c, level + 1);
-                sb.append(rc);
+                // Trim trailing newlines stemming from newlines after raw.
+                // This is an issue since we allow raw sections to continue after
+                // non-indented empty lines.
                 int len = rc.length();
                 int end = len;
                 while (end > 0 && rc.charAt(end - 1) == '\n') {
                     end--;
                 }
+                if (end == 0) {
+                    trailingNewlines += len;
+                } else {
+                    literal.accept("\n".repeat(trailingNewlines) + rc.substring(0, end));
+                    trailingNewlines = len - end;
+                }
                 trailingNewlines = end == 0 ? trailingNewlines + len : len - end;
                 continue;
             }
-            trailingNewlines = 0;
-            if (c.getType().equals("interpolation")) {
-                sb.append(interpretInterpolation(c, level + 1, ctx));
-            } else if (c.getType().equals("interpolation2")) {
-                sb.append(interpretInterpolation2(c, level + 1, ctx));
-            } else {
-                throw new AstError(n);
+            if (trailingNewlines > 0) {
+                literal.accept("\n".repeat(trailingNewlines));
+                trailingNewlines = 0;
+            }
+            switch (c.getType()) {
+                case "interpolation":
+                    literal.accept(interpretInterpolation(c, level + 1, ctx));
+                    break;
+                case "interpolation2":
+                    if (argument == null) throw new AstError(c);
+                    interpretInterpolation(c, level + 1, ctx, argument::accept, argument::accept);
+                    break;
+                default:
+                    throw new AstError(c);
             }
         }
-        // Trim trailing newlines stemming from newlines after raw.
-        // This is an issue since we allow raw sections to continue after
-        // non-indented empty lines.
-        return sb.substring(0, sb.length() - trailingNewlines);
     }
 
     // Methods corresponding to terminal AST nodes
