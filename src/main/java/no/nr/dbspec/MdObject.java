@@ -27,10 +27,6 @@ public class MdObject {
         return this.name;
     }
 
-    public void setDocumentation(String documentation) {
-        this.documentation = documentation;
-    }
-
     public String getDocumentation() {
         return this.documentation;
     }
@@ -39,6 +35,8 @@ public class MdObject {
         this.children.add(child);
     }
 
+    // Only for testing
+    @Override
     public String toString() {
         return String.format(
                 "(%s %s \"%s\"%S%s)",
@@ -48,11 +46,6 @@ public class MdObject {
 
     public List<MdObject> getChildren(MdType type) {
         return children.stream().filter((x) -> x.type == type).collect(Collectors.toList());
-    }
-
-    public MdObject getChild(MdType type) {
-        Optional<MdObject> found = children.stream().filter((x) -> x.type == type).findAny();
-        return found.orElse(null);
     }
 
     public MdObject getChild(MdType type, String name) {
