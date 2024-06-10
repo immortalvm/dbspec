@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import no.nr.dbspec.MdObject.MdType;
+import no.nr.dbspec.SiardMd.SiardMdType;
 import ch.admin.bar.siard2.api.Archive;
 import ch.admin.bar.siard2.api.MetaCheckConstraint;
 import ch.admin.bar.siard2.api.MetaColumn;
@@ -23,7 +23,7 @@ import org.treesitter.TSNode;
 public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     @Override
-    public void updateMetadata(String siardFilename, MdObject mdo, Connection connection, TSNode n) {
+    public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection, TSNode n) {
         Archive archive = ArchiveImpl.newInstance();
         File siardFile = new File(siardFilename);
         try {
@@ -37,7 +37,7 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateDbLevelMetadata(MetaData md, MdObject mdo, Connection connection, TSNode n) {
+    private void updateDbLevelMetadata(MetaData md, SiardMd mdo, Connection connection, TSNode n) {
         String x;
         x = getInfoField(mdo, "dbname");
         if (x == null) {
@@ -55,8 +55,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         if (null != (x = getInfoField(mdo, "dataOriginTimespan"))) md.setDataOriginTimespan(x);
     }
 
-    private void updateArchiveMetadata(Archive archive, MdObject mdo) {
-        for (MdObject sObj : mdo.getChildren(MdType.SCHEMA)) {
+    private void updateArchiveMetadata(Archive archive, SiardMd mdo) {
+        for (SiardMd sObj : mdo.getChildren(SiardMdType.SCHEMA)) {
             String name = sObj.getName();
             String documentation = sObj.getDocumentation();
             Schema schema = archive.getSchema(name);
@@ -72,8 +72,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateTableMetadata(MetaSchema schema, MdObject mdo) {
-        for (MdObject tObj : mdo.getChildren(MdType.TABLE)) {
+    private void updateTableMetadata(MetaSchema schema, SiardMd mdo) {
+        for (SiardMd tObj : mdo.getChildren(SiardMdType.TABLE)) {
             String name = tObj.getName();
             String documentation = tObj.getDocumentation();
             MetaTable table = schema.getMetaTable(name);
@@ -86,8 +86,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateTableColumnMetadata(MetaTable table, MdObject mdo) {
-        for (MdObject cObj : mdo.getChildren(MdType.COLUMN)) {
+    private void updateTableColumnMetadata(MetaTable table, SiardMd mdo) {
+        for (SiardMd cObj : mdo.getChildren(SiardMdType.COLUMN)) {
             String name = cObj.getName();
             String documentation = cObj.getDocumentation();
             MetaColumn column = table.getMetaColumn(name);
@@ -98,8 +98,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateViewMetadata(MetaSchema schema, MdObject mdo) {
-        for (MdObject vObj : mdo.getChildren(MdType.VIEW)) {
+    private void updateViewMetadata(MetaSchema schema, SiardMd mdo) {
+        for (SiardMd vObj : mdo.getChildren(SiardMdType.VIEW)) {
             String name = vObj.getName();
             String documentation = vObj.getDocumentation();
             MetaView view = schema.getMetaView(name);
@@ -110,8 +110,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateViewColumnMetadata(MetaView view, MdObject mdo) {
-        for (MdObject cObj : mdo.getChildren(MdType.COLUMN)) {
+    private void updateViewColumnMetadata(MetaView view, SiardMd mdo) {
+        for (SiardMd cObj : mdo.getChildren(SiardMdType.COLUMN)) {
             String name = cObj.getName();
             String documentation = cObj.getDocumentation();
             MetaColumn column = view.getMetaColumn(name);
@@ -122,8 +122,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateTypeMetadata(MetaSchema schema, MdObject mdo) {
-        for (MdObject tObj : mdo.getChildren(MdType.TYPE)) {
+    private void updateTypeMetadata(MetaSchema schema, SiardMd mdo) {
+        for (SiardMd tObj : mdo.getChildren(SiardMdType.TYPE)) {
             String name = tObj.getName();
             String documentation = tObj.getDocumentation();
             MetaType type = schema.getMetaType(name);
@@ -133,8 +133,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateFieldMetadata(MetaColumn column, MdObject mdo) {
-        for (MdObject fObj : mdo.getChildren(MdType.FIELD)) {
+    private void updateFieldMetadata(MetaColumn column, SiardMd mdo) {
+        for (SiardMd fObj : mdo.getChildren(SiardMdType.FIELD)) {
             String name = fObj.getName();
             String documentation = fObj.getDocumentation();
             MetaField field;
@@ -148,8 +148,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateKeyMetadata(MetaTable table, MdObject mdo) {
-        for (MdObject kObj : mdo.getChildren(MdType.KEY)) {
+    private void updateKeyMetadata(MetaTable table, SiardMd mdo) {
+        for (SiardMd kObj : mdo.getChildren(SiardMdType.KEY)) {
             String name = kObj.getName();
             String documentation = kObj.getDocumentation();
             MetaForeignKey key = table.getMetaForeignKey(documentation);
@@ -159,8 +159,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private void updateCheckMetadata(MetaTable table, MdObject mdo) {
-        for (MdObject cObj : mdo.getChildren(MdType.KEY)) {
+    private void updateCheckMetadata(MetaTable table, SiardMd mdo) {
+        for (SiardMd cObj : mdo.getChildren(SiardMdType.KEY)) {
             String name = cObj.getName();
             String documentation = cObj.getDocumentation();
             MetaCheckConstraint check = table.getMetaCheckConstraint(name);
@@ -170,8 +170,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
     }
 
-    private String getInfoField(MdObject mdo, String name) {
-        MdObject child = mdo.getChild(MdType.INFO, name);
+    private String getInfoField(SiardMd mdo, String name) {
+        SiardMd child = mdo.getChild(SiardMdType.INFO, name);
         return child != null && child.getDocumentation().length() > 0 ? child.getDocumentation() : null;
     }
 }

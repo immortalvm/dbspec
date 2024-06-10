@@ -19,7 +19,7 @@ Output conn to "my.siard"
 Set res = result via conn:
 	SELECT * FROM trace
 
-Assert res.size == 3
+Assert res.size == 2
 
 Set res = result via conn:
 	SELECT 1
@@ -42,5 +42,3 @@ Set res = result via conn:
 	AND (data)."mdo" = '(METADATA  "" (INFO description "Automatic test database") (INFO dataOwner "Example.com"))'
 	AND (data)."url" = $${url}
 Assert res.size == 1
-
-# TODO: The no-op ROAE generation (id=3) should be eliminated

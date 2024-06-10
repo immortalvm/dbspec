@@ -13,7 +13,7 @@ public class SiardMetadataAdjusterFake implements SiardMetadataAdjuster {
     }
 
     @Override
-    public void updateMetadata(String siardFilename, MdObject mdo, Connection connection, TSNode n) {
+    public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection, TSNode n) {
         database.trace(Map.of(
                 "type", "adjustment",
                 "filename", siardFilename,
