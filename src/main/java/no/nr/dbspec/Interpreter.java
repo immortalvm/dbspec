@@ -875,7 +875,6 @@ public class Interpreter {
                     literal.accept("\n".repeat(trailingNewlines) + rc.substring(0, end));
                     trailingNewlines = len - end;
                 }
-                trailingNewlines = end == 0 ? trailingNewlines + len : len - end;
                 continue;
             }
             if (trailingNewlines > 0) {
