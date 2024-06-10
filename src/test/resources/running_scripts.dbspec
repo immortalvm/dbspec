@@ -16,8 +16,8 @@ Execute using "/bin/x":
 	foo
 
 Set y = result using "C:\\bin\\y":
+	${user}
 	bar
-	baz
 Assert y.as_integer == 2
 
 
@@ -45,5 +45,5 @@ Set res2 = result via conn:
 	WHERE id = 2
 	AND (data)."type" = 'script'
 	AND (data)."interpreter" = 'C:\bin\y'
-	AND (data)."script" = U&'bar\000abaz'
+	AND (data)."script" = U&'${user}\000abar'
 Assert res2.size == 1

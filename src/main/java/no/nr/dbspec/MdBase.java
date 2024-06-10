@@ -34,8 +34,8 @@ public abstract class MdBase<T extends Enum<T>, D extends MdBase<T, D>> {
     @Override
     public String toString() {
         return String.format(
-                "(%s %s \"%s\"%S%s)",
-                type, name, documentation.trim(), children.isEmpty() ? "" : " ",
+                "(%s %s %s%s%s)",
+                type, name, Utils.escape(documentation, false), children.isEmpty() ? "" : " ",
                 children.stream().map(MdBase::toString).collect(Collectors.joining(" ")));
     }
 
@@ -46,5 +46,9 @@ public abstract class MdBase<T extends Enum<T>, D extends MdBase<T, D>> {
     public D getChild(T type, String name) {
         Optional<D> found = children.stream().filter((x) -> x.type == type && x.name.equals(name)).findAny();
         return found.orElse(null);
+    }
+
+    public boolean hasNoChildren() {
+        return children.isEmpty();
     }
 }

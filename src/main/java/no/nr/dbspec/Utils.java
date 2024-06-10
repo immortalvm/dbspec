@@ -13,4 +13,22 @@ public class Utils {
                 .lines()
                 .collect(Collectors.joining(System.lineSeparator()));
     }
+
+    public static String escape(Object o, boolean properly){
+        if (o instanceof String) {
+            String x = ((String) o)
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"");
+            if (properly) {
+                x = x
+                        .replace("\t", "\\t")
+                        .replace("\b", "\\b")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\f", "\\f");
+            }
+            return "\"" + x + "\"";
+        }
+        return o.toString();
+    }
 }

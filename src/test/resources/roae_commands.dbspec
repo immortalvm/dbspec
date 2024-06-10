@@ -1,0 +1,60 @@
+# Expected exit status code: 0
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Metadata for conn:
+	Command:
+		title = "Get extractions"
+		Parameters:
+			i
+		Body:
+			SELECT data
+			FROM trace
+			WHERE id = $${i}
+			AND (data)."url" = '${url}'
+
+Output conn to "my.siard"
+
+Set res = result via conn:
+	SELECT * FROM trace
+Assert res.size == 2
+
+Set res = result via conn:
+	SELECT 1
+	FROM trace
+	WHERE id = 1
+	AND (data)."type" = 'extraction'
+	AND (data)."url" = '${url}'
+	AND (data)."filename" = 'my.siard'
+Assert res.size == 1
+
+Set mdo:
+	(COMMAND  "Get extractions" (PARAMETER i "") (SQL  "SELECT data
+	FROM trace
+	WHERE id = ${"$$"}{i}
+	AND (data).\"url\" = '${url}'"))
+
+Set res = result via conn:
+	SELECT 1
+	FROM trace
+	WHERE id = 2
+	AND (data)."type" = 'roae'
+	AND (data)."filename" = 'my.roae'
+	AND (data)."mdo" = $${mdo}
+Assert res.size == 1
+
+
+Set res = result via conn:
+	SELECT (data)."mdo"
+	FROM trace
+	WHERE id = 2
+
+For (mdo) in res:
+	Log mdo

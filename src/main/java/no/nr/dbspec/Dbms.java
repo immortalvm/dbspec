@@ -19,7 +19,7 @@ public class Dbms {
         connectionParameters = new HashMap<Connection,Properties>();
     }
 
-    public Connection connect(String url, Context ctx) throws SQLException {
+    public Connection connect(String url, NormalContext ctx) throws SQLException {
         Properties parameters = new Properties();
         ctx.forEach(parameters::put);
         Connection c = DriverManager.getConnection(url, parameters);

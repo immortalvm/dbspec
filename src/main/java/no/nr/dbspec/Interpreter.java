@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -34,7 +35,7 @@ public class Interpreter {
     private final Path dir;
     private final Log log;
     private final Properties config;
-    private final Context context;
+    private final NormalContext context;
     private final Map<String, SiardMd> siardMd;
     private final Map<SiardMd, List<CommandMd>> commandMds;
     private final Dbms dbms;
@@ -55,7 +56,7 @@ public class Interpreter {
             SiardMetadataAdjuster siardMetadataAdjuster,
             RoaeProducer roaeProducer) {
         this.scriptRunner = scriptRunner;
-        this.context = new Context();
+        this.context = new NormalContext();
         this.siardMd = new HashMap<>();
         this.commandMds = new HashMap<>();
         this.dbms = dbms;
@@ -151,7 +152,7 @@ public class Interpreter {
         return IntStream.range(0, node.getChildCount()).mapToObj(node::getChild).filter(TSNode::isNamed);
     }
 
-    void interpretSourceFile(TSNode n, int level, Context ctx) {
+    void interpretSourceFile(TSNode n, int level, NormalContext ctx) {
         log.write(Log.DEBUG, "%s* source file\n", indent(level));
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameters")) {
@@ -162,7 +163,7 @@ public class Interpreter {
         });
     }
 
-    void interpretParameters(TSNode n, int level, Context ctx) {
+    void interpretParameters(TSNode n, int level, NormalContext ctx) {
         log.write(Log.DEBUG, "%s* parameters\n", indent(level));
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
@@ -173,7 +174,7 @@ public class Interpreter {
         });
     }
 
-    void interpretParameter(TSNode n, int level, Context ctx) {
+    void interpretParameter(TSNode n, int level, NormalContext ctx) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
@@ -185,7 +186,7 @@ public class Interpreter {
         log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
     }
 
-    void interpretStatement(TSNode n, int level, Context ctx) {
+    void interpretStatement(TSNode n, int level, NormalContext ctx) {
         if (n.getType().equals("nop")) {
             // NOP
         } else if (n.getType().equals("set")) {
@@ -227,7 +228,7 @@ public class Interpreter {
         }
     }
 
-    void interpretSet(TSNode n, int level, Context ctx) {
+    void interpretSet(TSNode n, int level, NormalContext ctx) {
         TSNode name = n.getChildByFieldName("name");
         String variableName = interpretIdentifier(name, level + 1);
         TSNode value = n.getChildByFieldName("value");
@@ -291,7 +292,7 @@ public class Interpreter {
         }
         TSNode properties = n.getChildByFieldName("properties");
         log.write(Log.DEBUG, "%s* connection: %s\n", indent(level), (String)urlString);
-        Context connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
+        NormalContext connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
         try {
             return dbms.connect((String)urlString, connectionContext);
         } catch (SQLException e) {
@@ -368,13 +369,12 @@ public class Interpreter {
             throw new SemanticError(n, reason);
         }
         SiardMd md = siardMd.get(connectionString);
-        if (md == null) {
+        if (md == null || md.hasNoChildren()) {
             log.write(Log.WARNING, "%s* SIARD metadata not found\n", indent(level));
-            return;
+        } else {
+            log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
+            siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection, n);
         }
-        log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
-        siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection, n);
-
         String roaeFileString = skipExtension(fileString) + ".roae";
         log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), roaeFileString);
         try {
@@ -406,7 +406,7 @@ public class Interpreter {
         return (String)fieldString;
     }
 
-    void interpretSiardMetadata(TSNode n, int level, Context ctx) {
+    void interpretSiardMetadata(TSNode n, int level, NormalContext ctx) {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         SiardMd md = siardMd.computeIfAbsent(connectionString, x ->
@@ -557,7 +557,7 @@ public class Interpreter {
         });
     }
 
-    void interpretCommandDeclaration(TSNode n, int level, Context ctx, SiardMd parent) {
+    void interpretCommandDeclaration(TSNode n, int level, NormalContext ctx, SiardMd parent) {
         TSNode title = n.getChildByFieldName("title");
         Object titleString = null;
         if (title.getType().equals("raw")) {
@@ -574,13 +574,25 @@ public class Interpreter {
         TSNode parameters = n.getChildByFieldName("parameters");
         interpretCommandParameters(parameters, level + 1, ctx, md);
         TSNode body = n.getChildByFieldName("body");
-        String bodyString = interpretRaw(body, level + 1, new Context(ctx, true));
+
+        Set<String> parameterSet = md
+                .getChildren(CommandMdType.PARAMETER)
+                .stream()
+                .map(MdBase::getName)
+                .collect(Collectors.toSet());
+        CommandContext mdCtx = new CommandContext(ctx, parameterSet);
+
+        StringBuilder sb = new StringBuilder();
+        interpretRawSegments(body,level + 1, mdCtx, sb::append, x ->
+                sb.append("$${").append(Utils.escape(x, true)).append('}'));
+        String bodyString = sb.toString();
+
         CommandMd mdSql= new CommandMd(CommandMdType.SQL, "", bodyString);
         md.add(mdSql);
         log.write(Log.DEBUG, "%s'%s'\n", indent(level), bodyString);
     }
 
-    void interpretCommandParameters(TSNode n, int level, Context ctx, CommandMd parent) {
+    void interpretCommandParameters(TSNode n, int level, NormalContext ctx, CommandMd parent) {
         log.write(Log.DEBUG, "%s* parameters\n", indent(level));
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
@@ -591,7 +603,7 @@ public class Interpreter {
         });
     }
 
-    void interpretCommandParameter(TSNode n, int level, Context ctx, CommandMd parent) {
+    void interpretCommandParameter(TSNode n, int level, NormalContext ctx, CommandMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
@@ -605,7 +617,7 @@ public class Interpreter {
         log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
     }
 
-    void interpretForLoop(TSNode n, int level, Context ctx) {
+    void interpretForLoop(TSNode n, int level, NormalContext ctx) {
         TSNode variables = n.getChildByFieldName("variables");
         List<String> variablesStrings = interpretForVariables(variables, level + 1);
         TSNode resultSet = n.getChildByFieldName("result_set");
@@ -646,7 +658,7 @@ public class Interpreter {
         return variables;
     }
 
-    void interpretConditional(TSNode n, int level, Context ctx) {
+    void interpretConditional(TSNode n, int level, NormalContext ctx) {
         TSNode condition = n.getChildByFieldName("condition");
         Boolean comparisonValue = interpretComparison(condition, level + 1, ctx);
         log.write(Log.DEBUG, "* Conditional: value = '%s'\n", comparisonValue);
@@ -661,7 +673,7 @@ public class Interpreter {
         }
     }
 
-    void interpretStatementBlock(TSNode n, int level, Context ctx) {
+    void interpretStatementBlock(TSNode n, int level, NormalContext ctx) {
         log.write(Log.DEBUG, "%s* statement_block\n", indent(level));
         getChildren(n).forEach((TSNode c) -> {
             interpretStatement(c, level, ctx);
@@ -701,16 +713,17 @@ public class Interpreter {
     }
 
     Object interpretBasicExpression(TSNode n, int level, Context ctx) {
-        if (n.getType().equals("string")) {
-            return interpretString(n, level + 1, ctx);
-        } else if (n.getType().equals("variable_instance")) {
-            return interpretVariableInstance(n, level + 1, ctx);
-        } else if (n.getType().equals("integer")) {
-            return interpretInteger(n, level + 1);
-        } else if (n.getType().equals("dot_expression")) {
-            return interpretDotExpression(n, level + 1, ctx);
-        } else {
-            throw new AstError(n);
+        switch (n.getType()) {
+            case "string":
+                return interpretString(n, level + 1, ctx);
+            case "variable_instance":
+                return interpretVariableInstance(n, level + 1, ctx);
+            case "integer":
+                return interpretInteger(n, level + 1);
+            case "dot_expression":
+                return interpretDotExpression(n, level + 1, ctx);
+            default:
+                throw new AstError(n);
         }
     }
 
@@ -762,7 +775,9 @@ public class Interpreter {
         return getChildren(n).map(c -> {
             switch (c.getType()) {
                 case "interpolation":
-                    return interpretInterpolation(c, level + 1, ctx);
+                    String[] res = new String[1];
+                    interpretInterpolation(n, level, ctx, s -> res[0] = s, i -> res[0] = i.toString(), null);
+                    return res[0];
                 case "escape_sequence":
                     return interpretEscapeSequence(c, level + 1);
                 case "string_content":
@@ -779,30 +794,29 @@ public class Interpreter {
         return description.isNull() ? null : interpretShortDescription(description, level + 1);
     }
 
-    String interpretInterpolation(TSNode n, int level, Context ctx) {
-        String[] res = new String[1];
-        interpretInterpolation(n, level, ctx, s -> res[0] = s, i -> res[0] = i.toString());
-        return res[0];
-    }
-
     void interpretInterpolation(
             TSNode n,
             int level,
             Context ctx,
             Consumer<String> stringArg,
-            Consumer<BigInteger> intArg) {
-        Object interpolatedObject = interpretBasicExpression(n.getNamedChild(0), level, ctx);
-        if (interpolatedObject instanceof String) {
-            stringArg.accept((String)interpolatedObject);
-        } else if (interpolatedObject instanceof BigInteger) {
-            intArg.accept((BigInteger)interpolatedObject);
+            Consumer<BigInteger> intArg,
+            Consumer<ParameterRef> parameterArg) {
+        Object x = interpretBasicExpression(n.getNamedChild(0), level, ctx);
+        if (x instanceof String) {
+            stringArg.accept((String)x);
+        } else if (x instanceof BigInteger) {
+            intArg.accept((BigInteger)x);
+        } else if (x instanceof ParameterRef) {
+            parameterArg.accept((ParameterRef) x);
         } else {
-            throw new SemanticError(n, "The interpolation expression must be a string or an integer");
+            String message = "The interpolation expression must be a string"
+            + (parameterArg == null  ? " or an integer." : ", an integer or a parameter.");
+            throw new SemanticError(n, message);
         }
     }
 
-    Context interpretKeyValuePairs(TSNode n, int level, Context ctx) {
-        Context keyValuePairs = new Context(); // NB: does not inherit from ctx
+    NormalContext interpretKeyValuePairs(TSNode n, int level, Context ctx) {
+        NormalContext keyValuePairs = new NormalContext(); // NB: does not inherit from ctx
         if (!n.isNull()) {
             getChildren(n).forEach(c -> {
                 if (c.getType().equals("key_value_pair")) {
@@ -815,7 +829,7 @@ public class Interpreter {
         return keyValuePairs;
     }
 
-    void interpretKeyValuePair(TSNode n, int level, Context keyValuePairs, Context ctx) {
+    void interpretKeyValuePair(TSNode n, int level, NormalContext keyValuePairs, Context ctx) {
         TSNode key = n.getChildByFieldName("key");
         String keyString = interpretIdentifier(key, level + 1);
         TSNode value = n.getChildByFieldName("value");
@@ -881,13 +895,24 @@ public class Interpreter {
                 literal.accept("\n".repeat(trailingNewlines));
                 trailingNewlines = 0;
             }
+
             switch (c.getType()) {
                 case "interpolation":
-                    literal.accept(interpretInterpolation(c, level + 1, ctx));
+                    String[] val = new String[1];
+                    interpretInterpolation(c, level, ctx,
+                            s -> val[0] = s,
+                            j -> val[0] = j.toString(),
+                            p -> val[0] = "${" + p + "}");
+                    literal.accept(val[0]);
                     break;
                 case "interpolation2":
-                    if (argument == null) throw new AstError(c);
-                    interpretInterpolation(c, level + 1, ctx, argument::accept, argument::accept);
+                    if (argument == null) {
+                        throw new SemanticError(c, "Safe interpolation ($$) cannot be used here.");
+                    }
+                    interpretInterpolation(c, level + 1, ctx,
+                            argument::accept,
+                            argument::accept,
+                            argument::accept);
                     break;
                 default:
                     throw new AstError(c);
