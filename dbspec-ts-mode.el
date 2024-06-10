@@ -52,6 +52,11 @@
    '((interpolation) @font-lock-function-call-face)
 
    :language 'dbspec
+   :feature 'interpolation2
+   :override 'keep
+   '((interpolation2) @font-lock-type-face)
+
+   :language 'dbspec
    :feature 'raw
    :override 'keep
    '((raw) @default)
@@ -94,7 +99,7 @@
   (setq-local treesit-font-lock-settings dbspec-ts-mode--font-lock-settings)
   (setq-local treesit-font-lock-feature-list
               '((error identifier short_description keyword raw
-                       interpolation string integer)))
+                       interpolation interpolation2 string integer)))
 
   (setq-local font-lock-keywords
               '(("^\t*\\(#.*\\)$" 1 'font-lock-comment-face prepend)))
