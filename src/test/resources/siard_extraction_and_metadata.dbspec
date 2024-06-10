@@ -30,14 +30,17 @@ Set res = result via conn:
 	AND (data)."filename" = 'my.siard'
 Assert res.size == 1
 
+Set id = 2
+
+# With safe interpolation, $${..}.
 Set res = result via conn:
 	SELECT 1
 	FROM trace
-	WHERE id = 2
+	WHERE id = $${id}
 	AND (data)."type" = 'adjustment'
 	AND (data)."filename" = 'my.siard'
 	AND (data)."mdo" = '(METADATA  "" (INFO description "Automatic test database") (INFO dataOwner "Example.com"))'
-	AND (data)."url" = $${url} -- Safe interpolation
+	AND (data)."url" = $${url}
 Assert res.size == 1
 
 # TODO: The no-op ROAE generation (id=3) should be eliminated
