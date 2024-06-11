@@ -41,14 +41,6 @@ public class Database implements AutoCloseable {
         return trace(new JSONObject(map));
     }
 
-    public int trace(String... strings) {
-        return trace(new JSONArray(strings));
-    }
-
-    public int trace(JSONArray arr) {
-        return trace(arr.toString());
-    }
-
     public int trace(JSONObject obj) {
         return trace(obj.toString());
     }

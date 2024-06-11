@@ -4,30 +4,44 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class MdBase<T extends Enum<T>, D extends MdBase<T, D>> {
     protected final T type;
     protected final String name;
-    protected final String documentation;
-    protected final List<D> children;
+    private final String data;
+    private final List<D> children;
 
-    protected MdBase(T type, String name, String documentation) {
+    /**
+     * @param type Node type
+     * @param name Node name
+     * @param data Content other than children
+     */
+    protected MdBase(T type, String name, String data) {
         this.type = type;
         this.name = name;
-        this.documentation = documentation;
+        this.data = data;
         this.children = new ArrayList<>();
+    }
+
+    public T getType() {
+        return type;
     }
 
     public String getName() {
         return this.name;
     }
 
-    public String getDocumentation() {
-        return this.documentation;
+    public String getData() {
+        return this.data;
     }
 
     public void add(D child) {
         this.children.add(child);
+    }
+
+    public Stream<D> childStream() {
+        return children.stream();
     }
 
     // Only for testing
@@ -35,20 +49,20 @@ public abstract class MdBase<T extends Enum<T>, D extends MdBase<T, D>> {
     public String toString() {
         return String.format(
                 "(%s %s %s%s%s)",
-                type, name, Utils.escape(documentation, false), children.isEmpty() ? "" : " ",
-                children.stream().map(MdBase::toString).collect(Collectors.joining(" ")));
+                type, name, Utils.escape(data, false), children.isEmpty() ? "" : " ",
+                childStream().map(MdBase::toString).collect(Collectors.joining(" ")));
     }
 
     public List<D> getChildren(T type) {
-        return children.stream().filter((x) -> x.type == type).collect(Collectors.toList());
+        return childStream().filter((x) -> x.type == type).collect(Collectors.toList());
     }
 
     public D getChild(T type, String name) {
-        Optional<D> found = children.stream().filter((x) -> x.type == type && x.name.equals(name)).findAny();
+        Optional<D> found = childStream().filter((x) -> x.type == type && x.name.equals(name)).findAny();
         return found.orElse(null);
     }
 
-    public boolean hasNoChildren() {
-        return children.isEmpty();
+    public boolean hasChildren() {
+        return !children.isEmpty();
     }
 }

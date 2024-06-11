@@ -30,7 +30,7 @@ Assert res.size == 2
 # Change interpolation symbol so that we can use $ freely below.
 Interpolation symbol = '@'
 Set mdo:
-	(COMMAND  "Shadowing" (PARAMETER y "Shadowed") (SQL  "SELECT 'X' AS x1, $${\"X\"} AS x2, '${y}' AS y1, $${y} AS y2"))
+	(COMMAND null "Shadowing" (PARAMETER y "Shadowed") (SQL null "SELECT 'X' AS x1, $${\"X\"} AS x2, '${y}' AS y1, $${y} AS y2"))
 
 Set res = result via conn:
 	SELECT 1

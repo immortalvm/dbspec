@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 import no.nr.TreeSitterDbspec;
 import org.apache.commons.text.StringEscapeUtils;
 
-import no.nr.dbspec.CommandMd.CommandMdType;
+import no.nr.dbspec.RoaeMd.RoaeMdType;
 import no.nr.dbspec.SiardMd.SiardMdType;
 import org.treesitter.TSNode;
 import org.treesitter.TSParser;
@@ -37,7 +37,7 @@ public class Interpreter {
     private final Properties config;
     private final NormalContext context;
     private final Map<String, SiardMd> siardMd;
-    private final Map<SiardMd, List<CommandMd>> commandMds;
+    private final Map<SiardMd, List<RoaeMd>> commandMds;
     private final Dbms dbms;
     private final SiardExtractor siardExtractor;
     private final SiardMetadataAdjuster siardMetadataAdjuster;
@@ -178,11 +178,7 @@ public class Interpreter {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
-        TSNode description = n.getChildByFieldName("description");
-        String descriptionString = "";
-        if (!description.isNull() && description.getType().equals("short_description")) {
-            descriptionString = interpretShortDescription(description, level + 1);
-        }
+        String descriptionString = interpretShortDescrOf(n, level, ctx);
         log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
     }
 
@@ -369,7 +365,7 @@ public class Interpreter {
             throw new SemanticError(n, reason);
         }
         SiardMd md = siardMd.get(connectionString);
-        if (md == null || md.hasNoChildren()) {
+        if (md == null || !md.hasChildren()) {
             log.write(Log.WARNING, "%s* SIARD metadata not found\n", indent(level));
         } else {
             log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
@@ -391,12 +387,9 @@ public class Interpreter {
             return "";
         }
 
-        Object fieldString = null;
-        if (field.getType().equals("raw")) {
-            fieldString = interpretRaw(field, level, ctx);
-        } else {
-            fieldString = interpretBasicExpression(field, level, ctx);
-        }
+        Object fieldString = field.getType().equals("raw")
+                ? interpretRaw(field, level, ctx)
+                : interpretBasicExpression(field, level, ctx);
         if (!(fieldString instanceof String)) {
             throw new SemanticError(n, "Siard field " + fieldName + " is not a string");
         }
@@ -410,7 +403,7 @@ public class Interpreter {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         SiardMd md = siardMd.computeIfAbsent(connectionString, x ->
-                new SiardMd(SiardMdType.METADATA, "", ""));
+                new SiardMd(SiardMdType.METADATA, null, null));
         log.write(Log.DEBUG, "%s* SIARD metadata for %s\n", indent(level), connectionString);
         interpretSiardMetadataField("dbname", n, level + 1, ctx, md);
         interpretSiardMetadataField("description", n, level + 1, ctx, md);
@@ -428,13 +421,15 @@ public class Interpreter {
         });
     }
 
+    private String interpretMdDescr(TSNode n, int level, Context ctx) {
+        String sd = interpretShortDescrOf(n, level, ctx);
+        return sd != null ? sd : interpretSiardMetadataField("description", n, level, ctx, null);
+    }
+
     void interpretSiardSchema(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.SCHEMA, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD schema: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -452,10 +447,7 @@ public class Interpreter {
     void interpretSiardType(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.TYPE, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD type: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -464,10 +456,7 @@ public class Interpreter {
     void interpretSiardTable(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.TABLE, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD table: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -485,10 +474,7 @@ public class Interpreter {
     void interpretSiardColumn(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.COLUMN, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD column: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -502,10 +488,7 @@ public class Interpreter {
     void interpretSiardField(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.FIELD, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD field: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -519,10 +502,7 @@ public class Interpreter {
     void interpretSiardKey(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.KEY, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD key: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -531,10 +511,7 @@ public class Interpreter {
     void interpretSiardCheck(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.CHECK, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD check: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -543,10 +520,7 @@ public class Interpreter {
     void interpretSiardView(TSNode n, int level, Context ctx, SiardMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
-        String descriptionString = interpretShortDescr(n, level, ctx);
-        if (descriptionString == null) {
-            descriptionString = interpretSiardMetadataField("description", n, level, ctx, null);
-        }
+        String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.VIEW, nameString, descriptionString);
         parent.add(md);
         log.write(Log.DEBUG, "%s* SIARD view: %s [%s]\n", indent(level), nameString, descriptionString);
@@ -559,16 +533,13 @@ public class Interpreter {
 
     void interpretCommandDeclaration(TSNode n, int level, NormalContext ctx, SiardMd parent) {
         TSNode title = n.getChildByFieldName("title");
-        Object titleString = null;
-        if (title.getType().equals("raw")) {
-            titleString = interpretRaw(title, level, ctx);
-        } else {
-            titleString = interpretBasicExpression(title, level, ctx);
-        }
+        Object titleString = title.getType().equals("raw")
+                ? interpretRaw(title, level, ctx)
+                : interpretBasicExpression(title, level, ctx);
         if (!(titleString instanceof String)) {
             throw new SemanticError(n, "Title is not a string");
         }
-        CommandMd md = new CommandMd(CommandMdType.COMMAND, "", (String)titleString);
+        RoaeMd md = new RoaeMd(RoaeMdType.COMMAND, null, (String)titleString);
         commandMds.computeIfAbsent(parent, x -> new ArrayList<>()).add(md);
         log.write(Log.DEBUG, "%s* Command declaration: %s\n", indent(level), titleString);
         TSNode parameters = n.getChildByFieldName("parameters");
@@ -576,7 +547,7 @@ public class Interpreter {
         TSNode body = n.getChildByFieldName("body");
 
         Set<String> parameterSet = md
-                .getChildren(CommandMdType.PARAMETER)
+                .getChildren(RoaeMdType.PARAMETER)
                 .stream()
                 .map(MdBase::getName)
                 .collect(Collectors.toSet());
@@ -587,12 +558,11 @@ public class Interpreter {
                 sb.append("$${").append(Utils.escape(x, true)).append('}'));
         String bodyString = sb.toString();
 
-        CommandMd mdSql= new CommandMd(CommandMdType.SQL, "", bodyString);
-        md.add(mdSql);
+        md.add(new RoaeMd(RoaeMdType.SQL, null, bodyString));
         log.write(Log.DEBUG, "%s'%s'\n", indent(level), bodyString);
     }
 
-    void interpretCommandParameters(TSNode n, int level, NormalContext ctx, CommandMd parent) {
+    void interpretCommandParameters(TSNode n, int level, NormalContext ctx, RoaeMd parent) {
         log.write(Log.DEBUG, "%s* parameters\n", indent(level));
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
@@ -603,17 +573,12 @@ public class Interpreter {
         });
     }
 
-    void interpretCommandParameter(TSNode n, int level, NormalContext ctx, CommandMd parent) {
+    void interpretCommandParameter(TSNode n, int level, NormalContext ctx, RoaeMd parent) {
         TSNode name = n.getChildByFieldName("name");
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
-        TSNode description = n.getChildByFieldName("description");
-        String descriptionString = "";
-        if (!description.isNull() && description.getType().equals("short_description")) {
-            descriptionString = interpretShortDescription(description, level + 1);
-        }
-        CommandMd md = new CommandMd(CommandMdType.PARAMETER, nameString, descriptionString);
-        parent.add(md);
+        String descriptionString = interpretShortDescrOf(n, level, ctx);
+        parent.add(new RoaeMd(RoaeMdType.PARAMETER, nameString, descriptionString));
         log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
     }
 
@@ -789,9 +754,11 @@ public class Interpreter {
     }
 
     @SuppressWarnings("unused")
-    String interpretShortDescr(TSNode n, int level, Context ctx) {
+    String interpretShortDescrOf(TSNode n, int level, Context ctx) {
         TSNode description = n.getChildByFieldName("description");
-        return description.isNull() ? null : interpretShortDescription(description, level + 1);
+        return !description.isNull() && description.getType().equals("short_description")
+                ? interpretShortDescription(description, level + 1)
+                : null;
     }
 
     void interpretInterpolation(

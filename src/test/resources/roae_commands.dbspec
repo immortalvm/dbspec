@@ -36,7 +36,7 @@ Set res = result via conn:
 Assert res.size == 1
 
 Set mdo:
-	(COMMAND  "Get extractions" (PARAMETER i "") (SQL  "SELECT data
+	(COMMAND null "Get extractions" (PARAMETER i null) (SQL null "SELECT data
 	FROM trace
 	WHERE id = ${"$$"}{i}
 	AND (data).\"url\" = '${url}'"))
@@ -49,12 +49,3 @@ Set res = result via conn:
 	AND (data)."filename" = 'my.roae'
 	AND (data)."mdo" = $${mdo}
 Assert res.size == 1
-
-
-Set res = result via conn:
-	SELECT (data)."mdo"
-	FROM trace
-	WHERE id = 2
-
-For (mdo) in res:
-	Log mdo

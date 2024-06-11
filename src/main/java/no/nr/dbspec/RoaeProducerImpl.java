@@ -7,11 +7,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import no.nr.dbspec.CommandMd.CommandMdType;
+import no.nr.dbspec.RoaeMd.RoaeMdType;
 
 public class RoaeProducerImpl implements RoaeProducer {
     @Override
-    public void updateMetadata(String roaeFilename, List<CommandMd> commands, Log log, Path dir) throws IOException {
+    public void updateMetadata(String roaeFilename, List<RoaeMd> commands, Log log, Path dir) throws IOException {
         Path path = dir.resolve(roaeFilename);
         if (commands == null || commands.isEmpty()) {
             String message = "No commands defined. ";
@@ -26,14 +26,15 @@ public class RoaeProducerImpl implements RoaeProducer {
             return;
         }
         PrintWriter output = new PrintWriter(new FileWriter(path.toFile()));
-        for (CommandMd cObj : commands) {
-            output.write(cObj.getDocumentation());
-            output.format("%s\n", cObj.getDocumentation());
-            for (CommandMd pObj : cObj.getChildren(CommandMdType.PARAMETER)) {
-                output.format("%s - %s\n", pObj.getName(), pObj.getDocumentation());
+        for (RoaeMd cObj : commands) {
+            output.write(cObj.getData());
+            output.format("%s\n", cObj.getData());
+            for (RoaeMd pObj : cObj.getChildren(RoaeMdType.PARAMETER)) {
+                String description = pObj.getData();
+                output.format("%s - %s\n", pObj.getName(), description == null ? "" : description);
             }
-            for (CommandMd sObj : cObj.getChildren(CommandMdType.SQL)) {
-                output.format("%s\n", sObj.getDocumentation());
+            for (RoaeMd sObj : cObj.getChildren(RoaeMdType.SQL)) {
+                output.format("%s\n", sObj.getData());
             }
         }
         output.close();

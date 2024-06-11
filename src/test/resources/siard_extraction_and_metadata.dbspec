@@ -39,6 +39,6 @@ Set res = result via conn:
 	WHERE id = $${id}
 	AND (data)."type" = 'adjustment'
 	AND (data)."filename" = 'my.siard'
-	AND (data)."mdo" = '(METADATA  "" (INFO description "Automatic test database") (INFO dataOwner "Example.com"))'
+	AND (data)."mdo" = '(METADATA null null (INFO description "Automatic test database") (INFO dataOwner "Example.com"))'
 	AND (data)."url" = $${url}
 Assert res.size == 1

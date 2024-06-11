@@ -25,21 +25,24 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
     @Override
     public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection, TSNode n) {
         Archive archive = ArchiveImpl.newInstance();
-        File siardFile = new File(siardFilename);
         try {
-            archive.open(siardFile);
-            MetaData md = archive.getMetaData();
-            updateDbLevelMetadata(md, mdo, connection, n);
-            updateArchiveMetadata(archive, mdo);
-            archive.close();
+            File siardFile = new File(siardFilename);
+            try {
+                archive.open(siardFile);
+                MetaData md = archive.getMetaData();
+                updateDbLevelMetadata(md, mdo, connection, n);
+                updateArchiveMetadata(archive, mdo);
+            } finally {
+                archive.close();
+            }
         } catch (IOException e) {
+            // TODO: Log and propagate exception
             e.printStackTrace();
         }
     }
 
     private void updateDbLevelMetadata(MetaData md, SiardMd mdo, Connection connection, TSNode n) {
-        String x;
-        x = getInfoField(mdo, "dbname");
+        String x = getInfoField(mdo, "dbname");
         if (x == null) {
             try {
                 x = connection.getCatalog();
@@ -57,13 +60,11 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private void updateArchiveMetadata(Archive archive, SiardMd mdo) {
         for (SiardMd sObj : mdo.getChildren(SiardMdType.SCHEMA)) {
-            String name = sObj.getName();
-            String documentation = sObj.getDocumentation();
-            Schema schema = archive.getSchema(name);
+            Schema schema = archive.getSchema(sObj.getName());
             if (schema != null) {
                 MetaSchema metaSchema = schema.getMetaSchema();
-                metaSchema.setDescription(documentation);
-                if (sObj != null) {
+                if (metaSchema != null) {
+                    metaSchema.setDescription(sObj.getData());
                     updateTableMetadata(metaSchema, sObj);
                     updateViewMetadata(metaSchema, sObj);
                     updateTypeMetadata(metaSchema, sObj);
@@ -74,11 +75,9 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private void updateTableMetadata(MetaSchema schema, SiardMd mdo) {
         for (SiardMd tObj : mdo.getChildren(SiardMdType.TABLE)) {
-            String name = tObj.getName();
-            String documentation = tObj.getDocumentation();
-            MetaTable table = schema.getMetaTable(name);
-            table.setDescription(documentation);
+            MetaTable table = schema.getMetaTable(tObj.getName());
             if (table != null) {
+                table.setDescription(tObj.getData());
                 updateTableColumnMetadata(table, tObj);
                 updateKeyMetadata(table, tObj);
                 updateCheckMetadata(table, tObj);
@@ -88,11 +87,9 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private void updateTableColumnMetadata(MetaTable table, SiardMd mdo) {
         for (SiardMd cObj : mdo.getChildren(SiardMdType.COLUMN)) {
-            String name = cObj.getName();
-            String documentation = cObj.getDocumentation();
-            MetaColumn column = table.getMetaColumn(name);
+            MetaColumn column = table.getMetaColumn(cObj.getName());
             if (column != null) {
-                column.setDescription(documentation);
+                column.setDescription(cObj.getData());
                 updateFieldMetadata(column, cObj);
             }
         }
@@ -100,11 +97,9 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private void updateViewMetadata(MetaSchema schema, SiardMd mdo) {
         for (SiardMd vObj : mdo.getChildren(SiardMdType.VIEW)) {
-            String name = vObj.getName();
-            String documentation = vObj.getDocumentation();
-            MetaView view = schema.getMetaView(name);
-            view.setDescription(documentation);
+            MetaView view = schema.getMetaView(vObj.getName());
             if (view != null) {
+                view.setDescription(vObj.getData());
                 updateViewColumnMetadata(view, vObj);
             }
         }
@@ -112,11 +107,9 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private void updateViewColumnMetadata(MetaView view, SiardMd mdo) {
         for (SiardMd cObj : mdo.getChildren(SiardMdType.COLUMN)) {
-            String name = cObj.getName();
-            String documentation = cObj.getDocumentation();
-            MetaColumn column = view.getMetaColumn(name);
+            MetaColumn column = view.getMetaColumn(cObj.getName());
             if (column != null) {
-                column.setDescription(documentation);
+                column.setDescription(cObj.getData());
                 updateFieldMetadata(column, cObj);
             }
         }
@@ -124,54 +117,46 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private void updateTypeMetadata(MetaSchema schema, SiardMd mdo) {
         for (SiardMd tObj : mdo.getChildren(SiardMdType.TYPE)) {
-            String name = tObj.getName();
-            String documentation = tObj.getDocumentation();
-            MetaType type = schema.getMetaType(name);
+            MetaType type = schema.getMetaType(tObj.getName());
             if (type != null) {
-                type.setDescription(documentation);
+                type.setDescription(tObj.getData());
             }
         }
     }
 
     private void updateFieldMetadata(MetaColumn column, SiardMd mdo) {
         for (SiardMd fObj : mdo.getChildren(SiardMdType.FIELD)) {
-            String name = fObj.getName();
-            String documentation = fObj.getDocumentation();
-            MetaField field;
             try {
-                field = column.getMetaField(name);
+                MetaField field = column.getMetaField(fObj.getName());
                 if (field != null) {
-                    field.setDescription(documentation);
+                    field.setDescription(fObj.getData());
                 }
             } catch (IOException e) {
+                // TODO: This should at least be logged.
             }
         }
     }
 
     private void updateKeyMetadata(MetaTable table, SiardMd mdo) {
         for (SiardMd kObj : mdo.getChildren(SiardMdType.KEY)) {
-            String name = kObj.getName();
-            String documentation = kObj.getDocumentation();
-            MetaForeignKey key = table.getMetaForeignKey(documentation);
+            MetaForeignKey key = table.getMetaForeignKey(kObj.getName());
             if (key != null) {
-                key.setDescription(documentation);
+                key.setDescription(kObj.getData());
             }
         }
     }
 
     private void updateCheckMetadata(MetaTable table, SiardMd mdo) {
         for (SiardMd cObj : mdo.getChildren(SiardMdType.KEY)) {
-            String name = cObj.getName();
-            String documentation = cObj.getDocumentation();
-            MetaCheckConstraint check = table.getMetaCheckConstraint(name);
+            MetaCheckConstraint check = table.getMetaCheckConstraint(cObj.getName());
             if (check != null) {
-                check.setDescription(documentation);
+                check.setDescription(cObj.getData());
             }
         }
     }
 
     private String getInfoField(SiardMd mdo, String name) {
         SiardMd child = mdo.getChild(SiardMdType.INFO, name);
-        return child != null && child.getDocumentation().length() > 0 ? child.getDocumentation() : null;
+        return child == null ? null : child.getData();
     }
 }

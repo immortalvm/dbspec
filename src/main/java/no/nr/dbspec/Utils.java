@@ -14,9 +14,9 @@ public class Utils {
                 .collect(Collectors.joining(System.lineSeparator()));
     }
 
-    public static String escape(Object o, boolean properly){
-        if (o instanceof String) {
-            String x = ((String) o)
+    public static String escape(Object obj, boolean properly){
+        if (obj instanceof String) {
+            String x = ((String) obj)
                     .replace("\\", "\\\\")
                     .replace("\"", "\\\"");
             if (properly) {
@@ -29,6 +29,6 @@ public class Utils {
             }
             return "\"" + x + "\"";
         }
-        return o.toString();
+        return obj == null ? null : obj.toString();
     }
 }
