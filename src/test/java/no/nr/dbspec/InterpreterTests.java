@@ -39,13 +39,13 @@ public class InterpreterTests {
         try {
             // This is mainly a trick to find the directory containing the test .dbspec files.
             // Our tests will not work if these resources exist inside a .jar.
-            URL confUrl = InterpreterTests.class.getResource("/" + RunInterpreter.CONFIG_FILENAME);
+            URL confUrl = InterpreterTests.class.getResource("/" + Main.CONFIG_FILENAME);
             assert confUrl != null;
             URI confUri = confUrl.toURI();
             assert "file".equals(confUri.getScheme());
             Path confPath = Path.of(confUri);
             dir = confPath.getParent();
-            properties = RunInterpreter.loadConfigFile(confPath);
+            properties = Main.loadConfigFile(confPath);
             // We wanted to do this before and after each test,
             // but H2 still does not reliably give us a fresh (empty) database.
             database = new Database(

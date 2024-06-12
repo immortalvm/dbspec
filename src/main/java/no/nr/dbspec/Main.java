@@ -14,7 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-public class RunInterpreter {
+public class Main {
     private static final Option quietOpt = new Option("q", "quiet", false,
             "Produce no output even when failing (not guaranteed in extreme cases)");
     private static final Option verboseOpt = new Option(

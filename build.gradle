@@ -99,7 +99,7 @@ dependencies {
 }
 
 application {
-    mainClass = "no.nr.dbspec.RunInterpreter"
+    mainClass = "no.nr.dbspec.Main"
     applicationDefaultJvmArgs = [
         "-Dfile.encoding=UTF-8"
     ]
