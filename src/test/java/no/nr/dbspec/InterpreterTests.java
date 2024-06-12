@@ -39,7 +39,7 @@ public class InterpreterTests {
         try {
             // This is mainly a trick to find the directory containing the test .dbspec files.
             // Our tests will not work if these resources exist inside a .jar.
-            URL confUrl = InterpreterTests.class.getResource("/" + Main.CONFIG_FILENAME);
+            URL confUrl = InterpreterTests.class.getResource("/" + Main.DEFAULT_CONFIG_FILENAME);
             assert confUrl != null;
             URI confUri = confUrl.toURI();
             assert "file".equals(confUri.getScheme());

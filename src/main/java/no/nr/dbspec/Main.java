@@ -15,7 +15,8 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 public class Main {
-    private static final Option quietOpt = new Option("q", "quiet", false,
+    private static final Option quietOpt = new Option(
+            "q", "quiet", false,
             "Produce no output even when failing (not guaranteed in extreme cases)");
     private static final Option verboseOpt = new Option(
             "v", "verbose", false,
@@ -24,10 +25,13 @@ public class Main {
             null, "debug", false, "Turn on debug logging");
     private static final Option dirOpt = new Option(
             "d", "directory", true, "Set working/root directory");
+    private static final Option configOpt = new Option(
+            "c", "config", true, "Specify config file");
     private static final Options options = new Options()
             .addOption(verboseOpt)
             .addOption(quietOpt)
-            .addOption(dirOpt);
+            .addOption(dirOpt)
+            .addOption(configOpt);
 
     public static void main(String[] args) {
         System.exit(run(args).getValue());
@@ -65,7 +69,8 @@ public class Main {
             return StatusCode.DBSPEC_FILE_NOT_FOUND;
         }
 
-        Path configPath = dir.resolve(CONFIG_FILENAME);
+        String configFilename = cmd.getOptionValue(configOpt);
+        Path configPath = dir.resolve(configFilename != null ? configFilename : DEFAULT_CONFIG_FILENAME);
         Properties config;
         try {
             if (Files.exists(configPath)) {
@@ -92,7 +97,7 @@ public class Main {
         return i.interpret(file);
     }
 
-    public static final String CONFIG_FILENAME = "dbspec.conf";
+    public static final String DEFAULT_CONFIG_FILENAME = "dbspec.conf";
 
     public static Properties loadConfigFile(Path configPath) throws IOException {
         Properties config = new Properties();
