@@ -78,7 +78,7 @@ public class InterpreterTests {
         database.close();
     }
 
-    private final Log log = new Log(Log.INFO);
+    private final Log log = new Log(Log.NORMAL);
 
     @ParameterizedTest
     @MethodSource

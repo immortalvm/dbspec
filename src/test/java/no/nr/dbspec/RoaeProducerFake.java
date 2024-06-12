@@ -13,12 +13,12 @@ public class RoaeProducerFake implements RoaeProducer {
     }
 
     @Override
-    public void updateMetadata(String roaeFilename, List<RoaeMd> commands, Log log, Path dir) {
+    public void updateMetadata(Path path, List<RoaeMd> commands) {
         if (commands == null || commands.isEmpty()) return;
         String str = commands.stream().map(RoaeMd::toString).collect(Collectors.joining(" "));
         database.trace(Map.of(
                 "type", "roae",
-                "filename", roaeFilename,
+                "filename", path.getFileName().toString(),
                 "mdo", str));
     }
 }

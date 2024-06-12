@@ -1,9 +1,12 @@
 package no.nr.dbspec;
 
+import org.treesitter.TSNode;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -30,5 +33,21 @@ public class Utils {
             return "\"" + x + "\"";
         }
         return obj == null ? null : obj.toString();
+    }
+
+    public static String getType(Object obj) {
+        return obj == null ? "null" : obj.getClass().getSimpleName();
+    }
+
+    public static void ensureInstance(TSNode n, String errorMessageStart, Object obj, Class<?>... classes) {
+        for (Class<?> cls : classes) {
+            if (cls.isInstance(obj)) {
+                return;
+            }
+        }
+        throw new SemanticError(n, String.format("%s must be a %s, not %s.",
+                errorMessageStart,
+                Arrays.stream(classes).map(Class::getSimpleName).collect(Collectors.joining(" or ")),
+                getType(obj)));
     }
 }

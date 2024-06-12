@@ -16,13 +16,18 @@ import java.util.Properties;
 
 public class RunInterpreter {
     public static void main(String[] args) {
-        Option vOpt = new Option(
-                "v", "verbosity", true,
-                "verbosity level:\n0=fatal, 1=error, 2=warning, 3=info, 4=debug");
-        Option dOpt = new Option("d", "directory", true, "working/root directory");
+        Option quietOpt = new Option("q", "quiet", false,
+                "Produce no output even when failing (not guaranteed in extreme cases)");
+        Option verboseOpt = new Option(
+                "v", "verbose", false,
+                "Turn on verbose logging (for even more verbose logging, use '-debug')");
+        Option debugOpt = new Option(
+                null, "debug", false, "Turn on debug logging");
+        Option dirOpt = new Option(
+                "d", "directory", true, "Set working/root directory");
         Options options = new Options()
-                .addOption(vOpt)
-                .addOption(dOpt);
+                .addOption(verboseOpt)
+                .addOption(dirOpt);
 
         CommandLine cmd;
         CommandLineParser parser = new DefaultParser();
@@ -34,26 +39,25 @@ public class RunInterpreter {
             System.exit(3);
             return; // Otherwise, cmd would have to be initialized.
         }
-        Log log = new Log(Log.INFO); // Default log level
+        int logLevel = cmd.hasOption(quietOpt) ? Log.QUIET
+                : cmd.hasOption(debugOpt) ? Log.DEBUG
+                : cmd.hasOption(verboseOpt) ? Log.VERBOSE
+                : Log.NORMAL;
+        Log log = new Log(logLevel); // Default log level
 
-        String verbosityLevelString = cmd.getOptionValue(vOpt);
-        if (verbosityLevelString != null) {
-            log.setLevel(Integer.parseInt(verbosityLevelString));
-        }
-
-        String dirString = cmd.getOptionValue(dOpt);
+        String dirString = cmd.getOptionValue(dirOpt);
         Path dir = Path.of(dirString == null ? System.getProperty("user.dir") : dirString);
         if (!Files.isDirectory(dir)) {
-            log.write(Log.WARNING, "Error: The directory does not exist: " + dir);
+            log.error("The directory does not exist: " + dir);
             System.exit(4);
         }
         if (cmd.getArgs().length == 0) {
-            log.write(Log.WARNING, "Error: missing input filename");
+            log.error("Missing input filename.");
             System.exit(2);
         }
         Path file = dir.resolve(cmd.getArgs()[0]);
         if (!Files.exists(file)) {
-            log.write(Log.WARNING, "Error: missing input filename");
+            log.error("File not found.");
             System.exit(2);
         }
 
@@ -61,7 +65,7 @@ public class RunInterpreter {
         try {
              config = loadConfigFile(dir);
         } catch (IOException e) {
-            log.write(Log.WARNING, "Unable to read configuration file '%s'\n", CONFIG_FILENAME);
+            log.error("Unable to read configuration file '%s'.", CONFIG_FILENAME);
             config = new Properties();
         }
 

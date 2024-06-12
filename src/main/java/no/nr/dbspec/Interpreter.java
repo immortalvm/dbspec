@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -28,6 +29,9 @@ import no.nr.dbspec.SiardMd.SiardMdType;
 import org.treesitter.TSNode;
 import org.treesitter.TSParser;
 import org.treesitter.TSTree;
+
+import static no.nr.dbspec.Utils.getType;
+import static no.nr.dbspec.Utils.ensureInstance;
 
 @SuppressWarnings("SameParameterValue")
 public class Interpreter {
@@ -68,7 +72,7 @@ public class Interpreter {
         this.roaeProducer = roaeProducer;
     }
 
-    void printNodeLines(TSNode n) {
+    void logNodeLines(TSNode n) {
         int start = n.getStartByte();
         while (start > 0 && source.charAt(start - 1) != '\n') {
             start--;
@@ -91,57 +95,55 @@ public class Interpreter {
             if (pos == -1 || pos > end) {
                 pos = end;
             }
-            System.out.format("%d:\t%s\n", line++, source.substring(start, pos));
+            log.error("%d:\t%s", line++, source.substring(start, pos));
             start = pos + 1;
             pos = source.indexOf('\n', start);
         } while (start < end);
     }
 
     public boolean interpret(Path file) {
+        log.verbose("Parsing %s.", file);
         try {
             source = Files.readString(file);
         } catch (IOException e) {
             return false;
         }
-        log.write(Log.DEBUG, "--- Input ---\n%s\n-------------\n", source);
+        log.debug("--- Input ---\n%s-------------", source);
         TSParser parser = new TSParser();
         parser.setLanguage(new TreeSitterDbspec());
         tree = parser.parseString(null, source);
-        log.write(Log.DEBUG, "AST: %s\n\n", () -> tree.getRootNode().toString());
+        log.debug("AST: %s\n", (Supplier<String>) () -> tree.getRootNode().toString());
 
+        log.verbose("Starting execution.");
         try {
             TSNode n = tree.getRootNode();
-            log.write(Log.DEBUG, "Interpretation:\n\n");
             interpretSourceFile(n, 0, context);
             return true;
-        } catch (AstError e) {
-            System.out.format("AST error\n");
-            printNodeLines(e.node);
-            log.maybePrintStackTrace(e);
         } catch (SemanticError e) {
-            System.out.format("Semantic error: %s\n", e.reason);
-            printNodeLines(e.node);
+            log.error("Semantic error: %s", e.reason);
+            logNodeLines(e.node);
             log.maybePrintStackTrace(e);
         } catch (SqlError e) {
-            System.out.format("SQL error - %s\n", e.reason);
-            printNodeLines(e.node);
+            log.error("SQL error - %s", e.reason);
+            logNodeLines(e.node);
             log.maybePrintStackTrace(e);
         } catch (ScriptError e) {
-            System.out.format("Error in script - %s\n", e.reason);
-            printNodeLines(e.node);
+            log.error("Error in script - %s", e.reason);
+            logNodeLines(e.node);
             log.maybePrintStackTrace(e);
         } catch (AssertionFailure e) {
-            System.out.format("Assertion failed\n");
-            printNodeLines(e.node);
+            log.error("Assertion failed");
+            logNodeLines(e.node);
+            log.maybePrintStackTrace(e);
+        } catch (AstError e) {
+            log.error("Something went wrong when parsing.");
+            logNodeLines(e.node);
             log.maybePrintStackTrace(e);
         } catch (Exception e) {
+            // Internal error. Log stack trace except with log level QUIET.
             log.printStackTrace(e);
         }
         return false;
-    }
-
-    String indent(int level) {
-        return "  ".repeat(level);
     }
 
     // Methods corresponding to non-terminal AST nodes
@@ -153,7 +155,6 @@ public class Interpreter {
     }
 
     void interpretSourceFile(TSNode n, int level, NormalContext ctx) {
-        log.write(Log.DEBUG, "%s* source file\n", indent(level));
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameters")) {
                 interpretParameters(c, level + 1, ctx);
@@ -164,7 +165,7 @@ public class Interpreter {
     }
 
     void interpretParameters(TSNode n, int level, NormalContext ctx) {
-        log.write(Log.DEBUG, "%s* parameters\n", indent(level));
+        log.debugIndented(level,"* parameters");
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
                 interpretParameter(c, level + 1, ctx);
@@ -179,7 +180,7 @@ public class Interpreter {
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
         String descriptionString = interpretShortDescrOf(n, level, ctx);
-        log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* parameter: %s  [%s]", nameString, descriptionString);
     }
 
     void interpretStatement(TSNode n, int level, NormalContext ctx) {
@@ -211,14 +212,17 @@ public class Interpreter {
     }
 
     void interpretLog(TSNode n, int level, Context ctx) {
-        Object logValue = interpretBasicExpression(n.getNamedChild(0), level + 1, ctx);
-        log.write(Log.DEBUG, "%s* Log message: '%s'\n", indent(level), logValue);
-        log.write(Log.INFO, "%s\n", logValue);
+        Object message = interpretBasicExpression(n.getNamedChild(0), level + 1, ctx);
+        ensureInstance(n, "A log message ", message, String.class, BigInteger.class);
+        log.debugIndented(level, "* Log message: '%s'", message);
+        if (log.getLevel() > Log.QUIET) {
+            System.out.println(message);
+        }
     }
 
     void interpretAssert(TSNode n, int level, Context ctx) {
         boolean comparisonValue = interpretComparison(n.getNamedChild(0), level, ctx);
-        log.write(Log.DEBUG, "%s* Assertion: '%s'\n", indent(level), comparisonValue);
+        log.debugIndented(level, "* Assertion: '%s'", comparisonValue);
         if (!comparisonValue) {
             throw new AssertionFailure(n);
         }
@@ -237,7 +241,7 @@ public class Interpreter {
         if (variableValue == null) {
             throw new AstError(n);
         }
-        log.write(Log.DEBUG, "%s* Set %s = '%s'\n", indent(level), variableName, variableValue);
+        log.debugIndented(level, "* Set %s = '%s'", variableName, variableValue);
         ctx.setValue(variableName, variableValue);
     }
 
@@ -258,36 +262,30 @@ public class Interpreter {
     void interpretExecuteUsing(TSNode n, int level, Context ctx) {
         TSNode interpreter = n.getChildByFieldName("interpreter");
         Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
-        if (!(interpreterString instanceof String)) {
-            throw new SemanticError(n, "Interpreter is not a string");
-        }
+        ensureInstance(n, "The interpreter command/path", interpreterString, String.class);
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
         scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
-        log.write(Log.DEBUG, "%s* Executing using interpreter '%s': '%s'\n", indent(level), (String)interpreterString, scriptString);
+        log.debugIndented(level, "* Executing using interpreter '%s': '%s'", interpreterString, scriptString);
     }
 
     String interpretScriptResult(TSNode n, int level, Context ctx) {
         TSNode interpreter = n.getChildByFieldName("interpreter");
         Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
-        if (!(interpreterString instanceof String)) {
-            throw new SemanticError(n, "Interpreter is not a string");
-        }
+        ensureInstance(n, "The interpreter command/path", interpreterString, String.class);
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
         String scriptResult = scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
-        log.write(Log.DEBUG, "%s* Executing using interpreter %s: '%s'\n", indent(level), (String)interpreterString, scriptString);
+        log.debugIndented(level, "* Executing using interpreter %s: '%s'", (String)interpreterString, scriptString);
         return scriptResult;
     }
 
     Connection interpretConnection(TSNode n, int level, Context ctx) {
         TSNode url = n.getChildByFieldName("url");
         Object urlString = interpretBasicExpression(url, level, ctx);
-        if (!(urlString instanceof String)) {
-            throw new SemanticError(n, "URL is not a string");
-        }
+        ensureInstance(n, "The URL", urlString, String.class);
         TSNode properties = n.getChildByFieldName("properties");
-        log.write(Log.DEBUG, "%s* connection: %s\n", indent(level), (String)urlString);
+        log.debugIndented(level, "* connection: %s", (String)urlString);
         NormalContext connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
         try {
             return dbms.connect((String)urlString, connectionContext);
@@ -299,15 +297,13 @@ public class Interpreter {
     void interpretExecuteSql(TSNode n, int level, Context ctx) {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
-        Object dbmsConnection = ctx.getValue(connectionString);
-        if (!(dbmsConnection instanceof Connection)) {
-            throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
-        }
+        Object connectionObject = ctx.getValue(connectionString);
+        ensureInstance(n, "The target", connectionObject, Connection.class);
         TSNode sql = n.getChildByFieldName("sql");
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
-        log.write(Log.DEBUG, "%s* Executing SQL on connection %s: '%s'\n", indent(level), connectionString, pair.getKey());
+        log.debugIndented(level, "* Executing SQL on connection %s: '%s'", connectionString, pair.getKey());
         try {
-            dbms.executeSqlUpdate((Connection)dbmsConnection, pair);
+            dbms.executeSqlUpdate((Connection)connectionObject, pair);
         } catch (SQLException e) {
             throw new SqlError(n, e.getMessage());
         }
@@ -316,15 +312,13 @@ public class Interpreter {
     ResultSet interpretQuery(TSNode n, int level, Context ctx) {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
-        Object dbmsConnection = ctx.getValue(connectionString);
-        if (!(dbmsConnection instanceof Connection)) {
-            throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
-        }
+        Object connectionObject = ctx.getValue(connectionString);
+        ensureInstance(n, "The target", connectionObject, Connection.class);
         TSNode sql = n.getChildByFieldName("sql");
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
-        log.write(Log.DEBUG, "%s* Executing SQL query on connection %s: '%s'\n", indent(level), connectionString, pair.getKey());
+        log.debugIndented(level, "* Executing SQL query on connection %s: '%s'", connectionString, pair.getKey());
         try {
-            return dbms.executeSqlQuery((Connection)dbmsConnection, pair);
+            return dbms.executeSqlQuery((Connection)connectionObject, pair);
         } catch (SQLException e) {
             throw new SqlError(n, e.getMessage());
         }
@@ -345,37 +339,51 @@ public class Interpreter {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         Object connectionObject = ctx.getValue(connectionString);
-        if (!(connectionObject instanceof Connection)) {
-            throw new SemanticError(n, "Connection variable does not refer to an SQL connection");
-        }
+        ensureInstance(n, "The source", connectionObject, Connection.class);
         Connection dbmsConnection = (Connection)connectionObject;
         Object file = interpretBasicExpression(n.getChildByFieldName("file"), level, ctx);
-        if (!(file instanceof String)) {
-            throw new SemanticError(n, "Filename is not a string");
-        }
+        ensureInstance(n, "The filename", file, String.class);
         String fileString = (String)file;
-        log.write(Log.DEBUG, "%s* SIARD output %s to '%s'\n", indent(level), connectionString, fileString);
+        log.debugIndented(level, "* SIARD output %s to '%s'", connectionString, fileString);
+        Path path = dir.resolve(fileString);
         try {
-            siardExtractor.transfer(dbmsConnection, fileString);
+            log.verbose("Creating/replacing %s.", path);
+            siardExtractor.transfer(dbmsConnection, path);
         } catch (SiardError e) {
             String reason = "SIARD transfer failed";
             if (!e.getReason().isEmpty()) {
                 reason += ": " + e.getReason();
             }
+            // TODO: SemanticError does not seems entirely appropriate here.
             throw new SemanticError(n, reason);
         }
         SiardMd md = siardMd.get(connectionString);
         if (md == null || !md.hasChildren()) {
-            log.write(Log.WARNING, "%s* SIARD metadata not found\n", indent(level));
+            log.debugIndented(level, "* No additional SIARD metadata.", md);
         } else {
-            log.write(Log.DEBUG, "%s* SIARD metadata: %s\n", indent(level), md.toString());
+            log.debugIndented(level, "* Additional SIARD metadata: %s", md);
+            log.verbose("Adjusting metadata of %s.", path);
             siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection, n);
         }
         String roaeFileString = skipExtension(fileString) + ".roae";
-        log.write(Log.DEBUG, "%s* ROAE output to '%s'\n", indent(level), roaeFileString);
         try {
-            roaeProducer.updateMetadata(roaeFileString, commandMds.get(md), log, dir);
+            Path roaePath = dir.resolve(roaeFileString);
+            List<RoaeMd> commands = commandMds.get(md);
+            if (commands == null || commands.isEmpty()) {
+                String message = "No commands defined. ";
+                if (Files.exists(path)) {
+                    Files.delete(path);
+                    message += "Deleting existing ROAE file: " + path;
+                } else {
+                    message += "No ROAE file created.";
+                }
+                log.verbose(message);
+                return;
+            }
+            log.verbose("Creating/replacing %s.", roaePath);
+            roaeProducer.updateMetadata(roaePath, commands);
         } catch (IOException e) {
+            // TODO: SemanticError does not seems entirely appropriate here either.
             throw new SemanticError(n, "Unable to write to " + roaeFileString + "\n" + e.getMessage());
         }
     }
@@ -384,16 +392,14 @@ public class Interpreter {
         TSNode field = n.getChildByFieldName(fieldName);
         if (field.isNull()) {
             // Skip SIARD field when not provided
+            // TODO: Should we make sure it is erased instead?
             return "";
         }
-
         Object fieldString = field.getType().equals("raw")
                 ? interpretRaw(field, level, ctx)
                 : interpretBasicExpression(field, level, ctx);
-        if (!(fieldString instanceof String)) {
-            throw new SemanticError(n, "Siard field " + fieldName + " is not a string");
-        }
-        log.write(Log.DEBUG, "%s* SIARD metadata %s: %s\n", indent(level), fieldName, (String)fieldString);
+        ensureInstance(n, "The field '" + fieldName + "'", fieldString, String.class);
+        log.debugIndented(level, "* SIARD metadata %s: %s", fieldName, fieldString);
         SiardMd md = new SiardMd(SiardMdType.INFO, fieldName, (String)fieldString);
         parent.add(md);
         return (String)fieldString;
@@ -404,7 +410,7 @@ public class Interpreter {
         String connectionString = interpretIdentifier(connection, level + 1);
         SiardMd md = siardMd.computeIfAbsent(connectionString, x ->
                 new SiardMd(SiardMdType.METADATA, null, null));
-        log.write(Log.DEBUG, "%s* SIARD metadata for %s\n", indent(level), connectionString);
+        log.debugIndented(level, "* SIARD metadata for %s", connectionString);
         interpretSiardMetadataField("dbname", n, level + 1, ctx, md);
         interpretSiardMetadataField("description", n, level + 1, ctx, md);
         interpretSiardMetadataField("archiver", n, level + 1, ctx, md);
@@ -432,7 +438,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.SCHEMA, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD schema: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD schema: %s [%s]", nameString, descriptionString);
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("siard_type")) {
                 interpretSiardType(c, level + 1, ctx, md);
@@ -450,7 +456,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.TYPE, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD type: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD type: %s [%s]", nameString, descriptionString);
     }
 
     void interpretSiardTable(TSNode n, int level, Context ctx, SiardMd parent) {
@@ -459,7 +465,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.TABLE, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD table: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD table: %s [%s]", nameString, descriptionString);
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("siard_column")) {
                 interpretSiardColumn(c, level + 1, ctx, md);
@@ -477,7 +483,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.COLUMN, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD column: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD column: %s [%s]", nameString, descriptionString);
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("siard_field")) {
                 interpretSiardField(c, level + 1, ctx, md);
@@ -491,7 +497,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.FIELD, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD field: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD field: %s [%s]", nameString, descriptionString);
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("siard_field")) {
                 interpretSiardField(c, level + 1, ctx, parent);
@@ -505,7 +511,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.KEY, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD key: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD key: %s [%s]", nameString, descriptionString);
     }
 
     void interpretSiardCheck(TSNode n, int level, Context ctx, SiardMd parent) {
@@ -514,7 +520,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.CHECK, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD check: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD check: %s [%s]", nameString, descriptionString);
     }
 
     void interpretSiardView(TSNode n, int level, Context ctx, SiardMd parent) {
@@ -523,7 +529,7 @@ public class Interpreter {
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.VIEW, nameString, descriptionString);
         parent.add(md);
-        log.write(Log.DEBUG, "%s* SIARD view: %s [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* SIARD view: %s [%s]", nameString, descriptionString);
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("siard_column")) {
                 interpretSiardColumn(c, level + 1, ctx, md);
@@ -536,12 +542,10 @@ public class Interpreter {
         Object titleString = title.getType().equals("raw")
                 ? interpretRaw(title, level, ctx)
                 : interpretBasicExpression(title, level, ctx);
-        if (!(titleString instanceof String)) {
-            throw new SemanticError(n, "Title is not a string");
-        }
+        ensureInstance(n, "The title", titleString, String.class);
         RoaeMd md = new RoaeMd(RoaeMdType.COMMAND, null, (String)titleString);
         commandMds.computeIfAbsent(parent, x -> new ArrayList<>()).add(md);
-        log.write(Log.DEBUG, "%s* Command declaration: %s\n", indent(level), titleString);
+        log.debugIndented(level, "* Command declaration: %s", titleString);
         TSNode parameters = n.getChildByFieldName("parameters");
         interpretCommandParameters(parameters, level + 1, ctx, md);
         TSNode body = n.getChildByFieldName("body");
@@ -559,11 +563,11 @@ public class Interpreter {
         String bodyString = sb.toString();
 
         md.add(new RoaeMd(RoaeMdType.SQL, null, bodyString));
-        log.write(Log.DEBUG, "%s'%s'\n", indent(level), bodyString);
+        log.debugIndented(level + 1, "%s", bodyString);
     }
 
     void interpretCommandParameters(TSNode n, int level, NormalContext ctx, RoaeMd parent) {
-        log.write(Log.DEBUG, "%s* parameters\n", indent(level));
+        log.debugIndented(level, "* parameters");
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
                 interpretCommandParameter(c, level + 1, ctx, parent);
@@ -579,7 +583,7 @@ public class Interpreter {
         ctx.setValue(nameString, config.getProperty(nameString));
         String descriptionString = interpretShortDescrOf(n, level, ctx);
         parent.add(new RoaeMd(RoaeMdType.PARAMETER, nameString, descriptionString));
-        log.write(Log.DEBUG, "%s* parameter: %s  [%s]\n", indent(level), nameString, descriptionString);
+        log.debugIndented(level, "* parameter: %s  [%s]", nameString, descriptionString);
     }
 
     void interpretForLoop(TSNode n, int level, NormalContext ctx) {
@@ -588,7 +592,7 @@ public class Interpreter {
         TSNode resultSet = n.getChildByFieldName("result_set");
         String resultSetString = interpretIdentifier(resultSet, level + 1);
         TSNode body = n.getChildByFieldName("body");
-        log.write(Log.DEBUG, "%s* for_loop: %s in %s\n", indent(level),
+        log.debugIndented(level, "* for_loop: %s in %s",
                 String.join(", ", variablesStrings), resultSetString);
         ResultSet rs = (ResultSet)(ctx.getValue(resultSetString));
         try {
@@ -607,7 +611,7 @@ public class Interpreter {
                 interpretStatementBlock(body, level + 1, ctx);
             }
         } catch (SQLException e) {
-            throw new SemanticError(n, "Error in ResultSet.");
+            throw new SqlError(n, "Problem iterating through the result set:\n" + e.getMessage());
         }
     }
 
@@ -626,7 +630,7 @@ public class Interpreter {
     void interpretConditional(TSNode n, int level, NormalContext ctx) {
         TSNode condition = n.getChildByFieldName("condition");
         Boolean comparisonValue = interpretComparison(condition, level + 1, ctx);
-        log.write(Log.DEBUG, "* Conditional: value = '%s'\n", comparisonValue);
+        log.debugIndented(level, "* Conditional: value = '%s'", comparisonValue);
         if (comparisonValue) {
             TSNode thenBlock = n.getChildByFieldName("then");
             interpretStatementBlock(thenBlock, level + 1, ctx);
@@ -639,7 +643,7 @@ public class Interpreter {
     }
 
     void interpretStatementBlock(TSNode n, int level, NormalContext ctx) {
-        log.write(Log.DEBUG, "%s* statement_block\n", indent(level));
+        log.debugIndented(level, "* statement_block");
         getChildren(n).forEach((TSNode c) -> {
             interpretStatement(c, level, ctx);
         });
@@ -652,12 +656,8 @@ public class Interpreter {
         String operatorString = interpretComparisonOperator(operator, level + 1);
         TSNode right = n.getChildByFieldName("right");
         Object rightValue = interpretBasicExpression(right, level + 1, ctx);
-        if (!(leftValue instanceof BigInteger)) {
-            throw new SemanticError(n, "Left side of comparison is not integer");
-        }
-        if (!(rightValue instanceof BigInteger)) {
-            throw new SemanticError(n, "Right side of comparison is not integer");
-        }
+        ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class);
+        ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class);
         int comparisonValue = ((BigInteger)leftValue).compareTo((BigInteger)rightValue);
         switch (operatorString) {
             case "==":
@@ -673,7 +673,7 @@ public class Interpreter {
             case ">=":
                 return comparisonValue > -1;
             default:
-                throw new SemanticError(n, "Unknown comparison operator: " + operatorString);
+                throw new AstError(n);
         }
     }
 
@@ -707,14 +707,14 @@ public class Interpreter {
         Object leftValue = interpretBasicExpression(left, level + 1, ctx);
         TSNode right = n.getChildByFieldName("right");
         String rightOperator = interpretDotOperator(right, level + 1);
-        log.write(Log.DEBUG, "* Dot expression: value = '%s'.'%s'\n", leftValue, rightOperator);
+        log.debugIndented(level, "* Dot expression: value = '%s'.'%s'", leftValue, rightOperator);
         if (leftValue instanceof String) {
             if (rightOperator.equals("stripped")) {
                 return ((String)leftValue).trim();
             } else if (rightOperator.equals("as_integer")) {
                 return new BigInteger((String)leftValue);
             } else {
-                throw new SemanticError(n, "Unsupported dot expression");
+                throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
             }
         } else if (leftValue instanceof ResultSet) {
             if (rightOperator.equals("size")) {
@@ -726,13 +726,13 @@ public class Interpreter {
                     rs.absolute(currentRow);
                     return BigInteger.valueOf(lastRow);
                 } catch (SQLException e) {
-                    throw new SemanticError(n, "Error in ResultSet.");
+                    throw new SqlError(n, "Problem finding the size of the result set:\n" + e.getMessage());
                 }
             } else {
-                throw new SemanticError(n, "Unsupported dot expression");
+                throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
             }
         } else {
-            throw new SemanticError(n, "Illegal type in dot expression");
+            throw new SemanticError(n, "Illegal type in dot expression: " + getType(leftValue));
         }
     }
 
@@ -777,7 +777,7 @@ public class Interpreter {
             parameterArg.accept((ParameterRef) x);
         } else {
             String message = "The interpolation expression must be a string"
-            + (parameterArg == null  ? " or an integer." : ", an integer or a parameter.");
+                    + (parameterArg == null  ? " or an integer." : ", an integer or a parameter.");
             throw new SemanticError(n, message);
         }
     }
@@ -806,10 +806,8 @@ public class Interpreter {
         } else {
             valueString = interpretBasicExpression(value, level, ctx);
         }
-        if (!(valueString instanceof String)) {
-            throw new SemanticError(n, "Value is not a string");
-        }
-        keyValuePairs.setValue(keyString, (String)valueString);
+        ensureInstance(n, "The " + keyString + " value", valueString, String.class);
+        keyValuePairs.setValue(keyString, valueString);
     }
 
     String interpretRaw(TSNode n, int level, Context ctx) {
@@ -833,8 +831,8 @@ public class Interpreter {
             TSNode n,
             int level,
             Context ctx,
-            Consumer<String> literal,
-            Consumer<Object> argument) {
+            Consumer<String> literalConsumer,
+            Consumer<Object> argumentConsumer) {
         int trailingNewlines = 0;
         int nc = n.getChildCount();
         for (int i = 0; i < nc; i++) {
@@ -853,13 +851,13 @@ public class Interpreter {
                 if (end == 0) {
                     trailingNewlines += len;
                 } else {
-                    literal.accept("\n".repeat(trailingNewlines) + rc.substring(0, end));
+                    literalConsumer.accept("\n".repeat(trailingNewlines) + rc.substring(0, end));
                     trailingNewlines = len - end;
                 }
                 continue;
             }
             if (trailingNewlines > 0) {
-                literal.accept("\n".repeat(trailingNewlines));
+                literalConsumer.accept("\n".repeat(trailingNewlines));
                 trailingNewlines = 0;
             }
 
@@ -870,16 +868,16 @@ public class Interpreter {
                             s -> val[0] = s,
                             j -> val[0] = j.toString(),
                             p -> val[0] = "${" + p + "}");
-                    literal.accept(val[0]);
+                    literalConsumer.accept(val[0]);
                     break;
                 case "interpolation2":
-                    if (argument == null) {
+                    if (argumentConsumer == null) {
                         throw new SemanticError(c, "Safe interpolation ($$) cannot be used here.");
                     }
                     interpretInterpolation(c, level + 1, ctx,
-                            argument::accept,
-                            argument::accept,
-                            argument::accept);
+                            argumentConsumer::accept,
+                            argumentConsumer::accept,
+                            argumentConsumer::accept);
                     break;
                 default:
                     throw new AstError(c);

@@ -1,7 +1,7 @@
 package no.nr.dbspec;
 
+import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Map;
 
 public class SiardExtractorFake implements SiardExtractor {
@@ -12,10 +12,10 @@ public class SiardExtractorFake implements SiardExtractor {
     }
 
     @Override
-    public void transfer(Connection conn, String siardFilename) {
+    public void transfer(Connection conn, Path path) {
         database.trace(Map.of(
                 "type", "extraction",
                 "url", Database.getUrl(conn),
-                "filename", siardFilename));
+                "filename", path.getFileName().toString()));
     }
 }

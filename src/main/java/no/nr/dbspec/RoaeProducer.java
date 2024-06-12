@@ -5,5 +5,5 @@ import java.nio.file.Path;
 import java.util.List;
 
 public interface RoaeProducer {
-    void updateMetadata(String roaeFilename, List<RoaeMd> commands, Log log, Path dir) throws IOException;
+    void updateMetadata(Path path, List<RoaeMd> commands) throws IOException;
 }

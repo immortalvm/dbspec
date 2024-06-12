@@ -7,6 +7,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class SiardExtractorImpl implements SiardExtractor {
     private static final String SIARD_CMD_DRIVERS_PROPERTY = "ch.admin.bar.siard2.cmd.drivers";
@@ -34,7 +35,8 @@ public class SiardExtractorImpl implements SiardExtractor {
     }
 
     @Override
-    public void transfer(Connection conn, String siardFilename) throws SiardError {
+    public void transfer(Connection conn, Path path) throws SiardError {
+        log.verbose("Creating/replacing %s...", path);
         try {
             String jdbcUrl = conn.getMetaData().getURL();
             String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
@@ -62,18 +64,24 @@ public class SiardExtractorImpl implements SiardExtractor {
             cmd.add(String.format("-j=%s", jdbcUrl));
             cmd.add(String.format("-u=%s", dbUser));
             cmd.add(String.format("-p=%s", dbPassword));
-            cmd.add(String.format("-s=%s", dir.resolve(siardFilename).toFile().getCanonicalPath()));
-            log.write(Log.DEBUG, "--- Siard command: %s\n\n", String.join(" ", cmd));
+            cmd.add(String.format("-s=%s", path.toFile().getCanonicalPath()));
+            log.debug("SIARD command: %s", (Supplier<String>) () -> String.join(" ", cmd));
 
             ProcessBuilder pb = new ProcessBuilder(cmd)
                     .redirectErrorStream(true)
                     .directory(dir.toFile());
             boolean showOutput = log.getLevel() >= Log.DEBUG;
             if (showOutput) {
+                log.debug("Output from SIARD command:");
                 pb.inheritIO();
+                // TODO: Ideally, we should also redirect standard output from this process to standard error (where
+                // we do the other debug logging) but that may not be worth the effort.
             }
             Process p = pb.start();
             p.waitFor();
+            if (showOutput) {
+                log.newline();
+            }
             if (p.exitValue() != 0) {
                 StringBuilder sb = new StringBuilder();
                 sb.append("Exit value ").append(p.exitValue()).append(".");
@@ -86,7 +94,6 @@ public class SiardExtractorImpl implements SiardExtractor {
                 }
                 throw new SiardError(sb.toString());
             }
-
         } catch (SiardError e) {
             throw e;
         } catch(Exception e) {

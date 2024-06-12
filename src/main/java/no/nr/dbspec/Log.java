@@ -1,48 +1,85 @@
 package no.nr.dbspec;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+/**
+ * Logging to standard error
+ * NB. DbSpec Log statements write to standard output if level > QUIET.
+ */
 public class Log {
-    public static final int FATAL = 0;
-    public static final int ERROR = 1;
-    public static final int WARNING = 2;
-    public static final int INFO = 3;
-    public static final int DEBUG = 4;
+    public static final int QUIET = 0; // This even suppresses DbSpec Log statements !
+    public static final int NORMAL = 1;
+    public static final int VERBOSE = 2;
+    public static final int DEBUG = 3;
 
-    int level;
+    private final int level;
 
     public Log(int level) {
         this.level = level;
     }
 
-    void setLevel(int level) {
-        this.level = level;
-    }
-
-    int getLevel() {
+    public int getLevel() {
         return level;
     }
 
-    public void write(int level, String message, Object... args) {
-        if (level <= this.level) {
-            System.out.format(message, args);
+    /**
+     * Log error.
+     */
+    public void error(String message, Object... args) {
+        if (level > QUIET) {
+            unpack(args);
+            System.err.format("ERROR: " + message, args);
+            System.err.println();
         }
     }
 
-    public void write(int level, String message, Supplier<Object> arg) {
-        if (level <= this.level) {
-            System.out.format(message, arg.get());
+    public void verbose(String message, Object... args) {
+        if (level >= VERBOSE) {
+            unpack(args);
+            System.err.format(message, args);
+            System.err.println();
+        }
+    }
+
+    public void debug(String message, Object... args) {
+        debugIndented(0, message, args);
+    }
+
+    public void debugIndented(int indent, String message, Object... args) {
+        if (level >= DEBUG) {
+            String prefix = "DEBUG: " + "  ".repeat(indent);
+            unpack(args);
+            String m = String.format(message, args);
+            String[] lines = m.split("\n");
+            System.err.println(Arrays.stream(lines).map(x -> prefix + x).collect(Collectors.joining("\n")));
+        }
+    }
+
+    private static void unpack(Object[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof Supplier) {
+                args[i] = ((Supplier<?>) args[i]).get();
+            }
         }
     }
 
     public void maybePrintStackTrace(Throwable e) {
         if (level >= Log.DEBUG) {
-            printStackTrace(e);
+            e.printStackTrace(System.err);
         }
     }
 
     public void printStackTrace(Throwable e) {
-        //noinspection CallToPrintStackTrace
-        e.printStackTrace();
+        if (level > Log.QUIET) {
+            e.printStackTrace(System.err);
+        }
+    }
+
+    public void newline() {
+        if (level > QUIET) {
+            System.err.println();
+        }
     }
 }
