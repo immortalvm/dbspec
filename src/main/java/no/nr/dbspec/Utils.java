@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -36,7 +37,7 @@ public class Utils {
     }
 
     public static String getType(Object obj) {
-        return obj == null ? "null" : obj.getClass().getSimpleName();
+        return obj == null ? "null" : shortName(obj.getClass());
     }
 
     public static void ensureInstance(TSNode n, String errorMessageStart, Object obj, Class<?>... classes) {
@@ -45,9 +46,17 @@ public class Utils {
                 return;
             }
         }
-        throw new SemanticError(n, String.format("%s must be a %s, not %s.",
+        String t = Arrays.stream(classes).map(Utils::shortName).collect(Collectors.joining(" or "));
+        throw new SemanticError(n, String.format("%s must be a%s %s, not %s.",
                 errorMessageStart,
-                Arrays.stream(classes).map(Class::getSimpleName).collect(Collectors.joining(" or ")),
+                t.matches("[aeiouyAEIOUY].*") ? "n" : "",
+                t,
                 getType(obj)));
+    }
+
+    public static String shortName(Class<?> cls) {
+        if (cls == String.class) return "string";
+        if (cls == BigInteger.class) return "integer";
+        return cls.getSimpleName();
     }
 }

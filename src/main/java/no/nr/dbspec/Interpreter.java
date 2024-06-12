@@ -718,7 +718,11 @@ public class Interpreter {
             if (rightOperator.equals("stripped")) {
                 return ((String)leftValue).trim();
             } else if (rightOperator.equals("as_integer")) {
-                return new BigInteger((String)leftValue);
+                try {
+                    return new BigInteger((String)leftValue);
+                } catch (NumberFormatException e) {
+                    throw new SemanticError(n, "Not an integer: '" + leftValue + "'");
+                }
             } else {
                 throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
             }
@@ -747,7 +751,7 @@ public class Interpreter {
             switch (c.getType()) {
                 case "interpolation":
                     String[] res = new String[1];
-                    interpretInterpolation(n, level, ctx, s -> res[0] = s, i -> res[0] = i.toString(), null);
+                    interpretInterpolation(c, level, ctx, s -> res[0] = s, i -> res[0] = i.toString(), null);
                     return res[0];
                 case "escape_sequence":
                     return interpretEscapeSequence(c, level + 1);
