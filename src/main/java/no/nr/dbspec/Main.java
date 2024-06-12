@@ -26,6 +26,7 @@ public class Main {
             "d", "directory", true, "Set working/root directory");
     private static final Options options = new Options()
             .addOption(verboseOpt)
+            .addOption(quietOpt)
             .addOption(dirOpt);
 
     public static void main(String[] args) {
