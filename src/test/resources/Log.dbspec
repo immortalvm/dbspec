@@ -1,0 +1,22 @@
+# Expected exit status code: SEMANTIC_ERROR
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Log "This is logged"
+Log 17
+
+Set x = 9
+Set message:
+	Multiline log message
+		with tabs and interpolation: ${x}
+Log message
+
+# This fails:
+Log connection

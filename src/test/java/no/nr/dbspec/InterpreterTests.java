@@ -2,18 +2,22 @@ package no.nr.dbspec;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -22,8 +26,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class InterpreterTests {
 
-    private static final Pattern statusCodePattern;
-    private static final PathMatcher dbspecMatcher;
+    private static final Pattern statusCodePattern = Pattern.compile("^# Expected exit status code: ([A-Z_]+)$");
+    private static final PathMatcher dbspecMatcher = FileSystems.getDefault().getPathMatcher("glob:*.dbspec");
+    private static final String logTestFilename = "Log.dbspec";
+    private static final Set<String> handledSeparately = Set.of(logTestFilename);
+
     private static final Path dir;
     private static final Properties properties;
     private static final Database database;
@@ -33,9 +40,6 @@ public class InterpreterTests {
     private static final RoaeProducer roaeProducer;
 
     static {
-        statusCodePattern = Pattern.compile("^# Expected exit status code: ([A-Z_]+)$");
-        dbspecMatcher = FileSystems.getDefault().getPathMatcher("glob:*.dbspec");
-
         try {
             // This is mainly a trick to find the directory containing the test .dbspec files.
             // Our tests will not work if these resources exist inside a .jar.
@@ -68,7 +72,8 @@ public class InterpreterTests {
                 .list(dir)
                 .map(Path::getFileName)
                 .filter(dbspecMatcher::matches)
-                .map(Path::toString);
+                .map(Path::toString)
+                .filter(name -> !handledSeparately.contains(name));
     }
 
     @AfterEach
@@ -92,7 +97,7 @@ public class InterpreterTests {
 
         String line1 = new BufferedReader(new FileReader(file)).readLine();
         Matcher m = statusCodePattern.matcher(line1);
-        assertTrue(m.matches());
+        assertTrue(m.matches(), "Missing expected exit status");
         StatusCode expectedStatus = StatusCode.valueOf(m.toMatchResult().group(1));
 
         Interpreter i = new Interpreter(
@@ -106,5 +111,24 @@ public class InterpreterTests {
                 roaeProducer);
         StatusCode code = i.interpret(path);
         assertEquals(expectedStatus, code);
+    }
+
+    @Test
+    void test_Log_statements() throws Exception {
+        PrintStream originalOut = System.out;
+        try {
+            ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+            System.setOut(new PrintStream(outContent));
+            test_dbspec_files(logTestFilename);
+            String[] lines = outContent.toString().split("\r?\n");
+            int i = 0;
+            assertEquals("This is logged", lines[i++]);
+            assertEquals("17", lines[i++]);
+            assertEquals("Multiline log message", lines[i++]);
+            assertEquals("\twith tabs and interpolation: 9", lines[i++]);
+            assertEquals(i, lines.length);
+        } finally {
+            System.setOut(originalOut);
+        }
     }
 }
