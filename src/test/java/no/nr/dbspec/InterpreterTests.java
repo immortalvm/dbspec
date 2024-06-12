@@ -5,7 +5,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.*;
@@ -30,7 +33,7 @@ public class InterpreterTests {
     private static final RoaeProducer roaeProducer;
 
     static {
-        statusCodePattern = Pattern.compile("^# Expected exit status code: ([0-9]+)$");
+        statusCodePattern = Pattern.compile("^# Expected exit status code: ([A-Z_]+)$");
         dbspecMatcher = FileSystems.getDefault().getPathMatcher("glob:*.dbspec");
 
         try {
@@ -40,8 +43,9 @@ public class InterpreterTests {
             assert confUrl != null;
             URI confUri = confUrl.toURI();
             assert "file".equals(confUri.getScheme());
-            dir = Path.of(confUri).getParent();
-            properties = RunInterpreter.loadConfigFile(dir);
+            Path confPath = Path.of(confUri);
+            dir = confPath.getParent();
+            properties = RunInterpreter.loadConfigFile(confPath);
             // We wanted to do this before and after each test,
             // but H2 still does not reliably give us a fresh (empty) database.
             database = new Database(
@@ -89,7 +93,7 @@ public class InterpreterTests {
         String line1 = new BufferedReader(new FileReader(file)).readLine();
         Matcher m = statusCodePattern.matcher(line1);
         assertTrue(m.matches());
-        int expectedStatus = Integer.parseInt(m.toMatchResult().group(1));
+        StatusCode expectedStatus = StatusCode.valueOf(m.toMatchResult().group(1));
 
         Interpreter i = new Interpreter(
                 log,
@@ -100,9 +104,7 @@ public class InterpreterTests {
                 new Dbms(),
                 adjuster,
                 roaeProducer);
-        boolean res = i.interpret(path);
-        // TODO: Differentiate
-        int exitStatusCode = res ? 0 : 1;
-        assertEquals(expectedStatus, exitStatusCode);
+        StatusCode code = i.interpret(path);
+        assertEquals(expectedStatus, code);
     }
 }

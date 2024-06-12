@@ -101,12 +101,13 @@ public class Interpreter {
         } while (start < end);
     }
 
-    public boolean interpret(Path file) {
+    public StatusCode interpret(Path file) {
         log.verbose("Parsing %s.", file);
         try {
             source = Files.readString(file);
         } catch (IOException e) {
-            return false;
+            log.error("The file could not be read: %s\n%s", file, e.getMessage());
+            return StatusCode.SPEC_UNREADABLE;
         }
         log.debug("--- Input ---\n%s-------------", source);
         TSParser parser = new TSParser();
@@ -118,32 +119,37 @@ public class Interpreter {
         try {
             TSNode n = tree.getRootNode();
             interpretSourceFile(n, 0, context);
-            return true;
+            return StatusCode.OK;
         } catch (SemanticError e) {
             log.error("Semantic error: %s", e.reason);
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
+            return StatusCode.SEMANTIC_ERROR;
         } catch (SqlError e) {
             log.error("SQL error - %s", e.reason);
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
+            return StatusCode.SQL_ERROR;
         } catch (ScriptError e) {
             log.error("Error in script - %s", e.reason);
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
+            return StatusCode.SCRIPT_ERROR;
         } catch (AssertionFailure e) {
             log.error("Assertion failed");
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
+            return StatusCode.ASSERTION_FAILURE;
         } catch (AstError e) {
             log.error("Something went wrong when parsing.");
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
+            return StatusCode.AST_ERROR;
         } catch (Exception e) {
             // Internal error. Log stack trace except with log level QUIET.
             log.printStackTrace(e);
+            return StatusCode.INTERNAL_ERROR;
         }
-        return false;
     }
 
     // Methods corresponding to non-terminal AST nodes
