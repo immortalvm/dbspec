@@ -844,32 +844,37 @@ public class Interpreter {
             Context ctx,
             Consumer<String> literalConsumer,
             Consumer<Object> argumentConsumer) {
-        int trailingNewlines = 0;
+        StringBuilder pending = new StringBuilder();
         int nc = n.getChildCount();
         for (int i = 0; i < nc; i++) {
             TSNode c = n.getChild(i);
             if (!c.isNamed()) continue;
             if (c.getType().equals("raw_content")) {
                 String rc = interpretRawContent(c, level + 1);
-                // Trim trailing newlines stemming from newlines after raw.
+                // We trim trailing newlines stemming from newlines after raw.
                 // This is an issue since we allow raw sections to continue after
                 // non-indented empty lines.
                 int len = rc.length();
                 int end = len;
                 while (end > 0 && rc.charAt(end - 1) == '\n') {
                     end--;
+                    if (end > 0 && rc.charAt(end - 1) == '\r') {
+                        end--;
+                    }
                 }
                 if (end == 0) {
-                    trailingNewlines += len;
+                    pending.append(rc);
                 } else {
-                    literalConsumer.accept("\n".repeat(trailingNewlines) + rc.substring(0, end));
-                    trailingNewlines = len - end;
+                    pending.append(rc, 0, end);
+                    literalConsumer.accept(pending.toString());
+                    pending.setLength(0);
+                    pending.append(rc, end, len);
                 }
                 continue;
             }
-            if (trailingNewlines > 0) {
-                literalConsumer.accept("\n".repeat(trailingNewlines));
-                trailingNewlines = 0;
+            if (pending.length() > 0) {
+                literalConsumer.accept(pending.toString());
+                pending.setLength(0);
             }
 
             switch (c.getType()) {

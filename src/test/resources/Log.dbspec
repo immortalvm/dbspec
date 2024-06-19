@@ -16,6 +16,7 @@ Set x = 9
 Set message:
 	Multiline log message
 		with tabs and interpolation: ${x}
+
 Log message
 
 # This fails:

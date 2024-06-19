@@ -118,14 +118,16 @@ public class InterpreterTests {
         PrintStream originalOut = System.out;
         try {
             ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-            System.setOut(new PrintStream(outContent));
+            System.setOut(new PrintStream(outContent, true));
             test_dbspec_files(logTestFilename);
-            String[] lines = outContent.toString().split("\r?\n");
+            // -1: Include empty string after final newline/CRLF.
+            String[] lines = outContent.toString().split("\r?\n", -1);
             int i = 0;
             assertEquals("This is logged", lines[i++]);
             assertEquals("17", lines[i++]);
             assertEquals("Multiline log message", lines[i++]);
             assertEquals("\twith tabs and interpolation: 9", lines[i++]);
+            assertEquals("", lines[i++]);
             assertEquals(i, lines.length);
         } finally {
             System.setOut(originalOut);
