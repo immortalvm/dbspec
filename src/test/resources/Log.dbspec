@@ -1,4 +1,6 @@
 # Expected exit status code: SEMANTIC_ERROR
+#
+# For this test file, the assertions are written in Java.
 
 Parameters:
 	url

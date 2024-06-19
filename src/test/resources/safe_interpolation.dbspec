@@ -1,0 +1,44 @@
+# Expected exit status code: SEMANTIC_ERROR
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Set a = "A"
+
+# In strings, the first $ is interpreted literally.
+Set b1 = "$${a}"
+
+# This is the same
+Set b2:
+	${"$"}${a}
+
+Execute using "${b1}":
+	${b2}
+
+Set res = result via conn:
+	SELECT * FROM trace
+Assert res.size == 1
+
+# Change interpolation symbol so that we can use $ freely below.
+Interpolation symbol = '@'
+
+Set res1 = result via conn:
+	SELECT 1
+	FROM trace
+	-- In SQL blocks we can use both types of interpolation:
+	WHERE id = @{1}
+	AND (data)."type" = @@{"script"}
+	AND (data)."interpreter" = '$A'
+	AND (data)."script" = '$A'
+Assert res1.size == 1
+
+# This is an error since safe interpolation is only allowed in SQL blocks,
+# not setting variables or in other script blocks (Execute/Result using).
+Set c:
+	@@{a}
