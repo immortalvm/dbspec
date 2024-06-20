@@ -9,15 +9,28 @@ The interpreter can be built (and run) using Gradle.
 This can be encapsulated using Docker build, see `Dockerfile`s in the root and example directories.
 
 
-## Installing the DbSpec Emacs mode
+## The DbSpec Emacs mode
 
-The DbSpec Emacs mode offers syntax highlighting and validation when editing .dbspec files.
-It requires Emacs version 29 or higher, and it can be installed as follows:
+The DbSpec Emacs mode offers syntax highlighting and basic validation when editing .dbspec files.
+It requires Emacs version 29 (or higher) and some Emacs expertise.
+First, evaluate the following in `*scracth*`:
+```elisp
+(unless (assq 'dbspec treesit-language-source-alist)
+  (push (dbspec "https://github.com/immortalvm/tree-sitter-dbspec")
+        treesit-language-source-alist))
 
-```shell
-mkdir ~/.emacs.d/tree-sitter
-cp libtree-sitter-dbspec.so ~/.emacs.d/tree-sitter
-cp dbspec-ts-mode.el ~/.emacs.d
+;; Pull, (re)compile and install tree-sitter-dbspec grammar library.
+(treesit-install-language-grammar 'dbspec)
+```
+
+Next, place `dbspec-ts-mode.el` in an elisp directory on your load-path and add this
+(or something equivalent) to your .emacs:
+```elisp
+;; Use dbspec-ts-mode for .dbspec if possible.
+(when (and (treesit-ready-p 'dbspec)
+           (require 'dbspec-ts-mode nil t))
+  (add-to-list 'auto-mode-alist
+               '("\\.dbspec\\'" . dbspec-ts-mode)))
 ```
 
 
