@@ -23,15 +23,14 @@ First, evaluate the following in `*scracth*`:
 (treesit-install-language-grammar 'dbspec)
 ```
 
-Next, place `dbspec-ts-mode.el` in an elisp directory on your load-path and add this
-(or something equivalent) to your .emacs:
+Next, add the following (or something equivalent) to your .emacs:
 ```elisp
-;; Use dbspec-ts-mode for .dbspec if possible.
-(when (and (treesit-ready-p 'dbspec)
-           (require 'dbspec-ts-mode nil t))
-  (add-to-list 'auto-mode-alist
-               '("\\.dbspec\\'" . dbspec-ts-mode)))
+(when (treesit-ready-p 'dbspec)
+  (autoload 'dbspec-ts-mode "<path>"
+    "Major mode for editing DbSpec, powered by tree-sitter." t)
+  (add-to-list 'auto-mode-alist '("\\.dbspec\\'" . dbspec-ts-mode)))
 ```
+after changing `<path>` to the full path to your copy of `dbspec-ts-mode.el`.
 
 
 ## Dependencies and choice of license
