@@ -16,7 +16,7 @@ It requires Emacs version 29 (or higher) and some Emacs expertise.
 First, evaluate the following in `*scracth*`:
 ```elisp
 (unless (assq 'dbspec treesit-language-source-alist)
-  (push (dbspec "https://github.com/immortalvm/tree-sitter-dbspec")
+  (push '(dbspec "https://github.com/immortalvm/tree-sitter-dbspec")
         treesit-language-source-alist))
 
 ;; Pull, (re)compile and install tree-sitter-dbspec grammar library.
