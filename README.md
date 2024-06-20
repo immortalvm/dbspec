@@ -15,6 +15,8 @@ The DbSpec Emacs mode offers syntax highlighting and basic validation when editi
 It requires Emacs version 29 (or higher) and some Emacs expertise.
 First, evaluate the following in `*scracth*`:
 ```elisp
+(require 'treesit)
+
 (unless (assq 'dbspec treesit-language-source-alist)
   (push '(dbspec "https://github.com/immortalvm/tree-sitter-dbspec")
         treesit-language-source-alist))
