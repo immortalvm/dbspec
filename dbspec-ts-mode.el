@@ -114,10 +114,6 @@
   (setq-local whitespace-style '(face tabs tab-mark))
   (whitespace-mode 1))
 
-(if (treesit-ready-p 'dbspec)
-    (add-to-list 'auto-mode-alist
-                 '("\\.dbspec\\'" . dbspec-ts-mode)))
-
 (provide 'dbspec-ts-mode)
 
 ;;; dbspec-ts-mode.el ends here
