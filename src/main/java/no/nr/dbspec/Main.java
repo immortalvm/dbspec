@@ -29,6 +29,7 @@ public class Main {
             "c", "config", true, "Specify config file");
     private static final Options options = new Options()
             .addOption(verboseOpt)
+            .addOption(debugOpt)
             .addOption(quietOpt)
             .addOption(dirOpt)
             .addOption(configOpt);
