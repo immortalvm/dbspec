@@ -29,8 +29,8 @@ First, evaluate the following, e.g. in `*scratch*`:
 Next, add the following (or something equivalent) to your .emacs:
 ```elisp
 (use-package dbspec-ts-mode
-  :requires treesit
-  :if (treesit-ready-p 'dbspec)
+  :if (and (require 'treesit nil t)
+           (treesit-ready-p 'dbspec))
   :load-path "<dir>"
   :commands dbspec-ts-mode
   :mode "\\.dbspec\\'")
