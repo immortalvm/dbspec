@@ -378,9 +378,9 @@ public class Interpreter {
             List<RoaeMd> commands = commandMds.get(md);
             if (commands == null || commands.isEmpty()) {
                 String message = "No commands defined. ";
-                if (Files.exists(path)) {
-                    Files.delete(path);
-                    message += "Deleting existing ROAE file: " + path;
+                if (Files.exists(roaePath)) {
+                    Files.delete(roaePath);
+                    message += "Deleting existing ROAE file: " + roaePath;
                 } else {
                     message += "No ROAE file created.";
                 }
