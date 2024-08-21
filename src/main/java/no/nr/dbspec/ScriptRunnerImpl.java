@@ -50,10 +50,10 @@ public class ScriptRunnerImpl implements ScriptRunner {
             Process process = new ProcessBuilder(cmd).directory(dir.toFile()).start();
             process.waitFor();
             if (process.exitValue() != 0) {
-                result = Utils.streamToString(process.getErrorStream());
+                result = new String(process.getErrorStream().readAllBytes());
                 throw new ScriptError(n, ("Exit value: " + process.exitValue() + "\n" + result).trim());
             }
-            result = Utils.streamToString(process.getInputStream());
+            result = new String(process.getInputStream().readAllBytes());
         } catch (IOException e) {
             throw new ScriptError(n, e.getMessage());
         } catch (InterruptedException e) {

@@ -78,7 +78,7 @@ public class SiardExtractorImpl implements SiardExtractor {
                 // we do the other debug logging) but that may not be worth the effort.
             }
             Process p = pb.start();
-            p.waitFor();
+            String output = new String(p.getInputStream().readAllBytes());
             if (showOutput) {
                 log.newline();
             }
@@ -89,7 +89,7 @@ public class SiardExtractorImpl implements SiardExtractor {
                     String ls = System.lineSeparator();
                     String dashes = "-".repeat(72);
                     sb.append(" Output:").append(ls).append(dashes).append(ls);
-                    sb.append(Utils.streamToString(p.getInputStream()));
+                    sb.append(output);
                     sb.append(ls).append(dashes);
                 }
                 throw new SiardError(sb.toString());
@@ -98,7 +98,7 @@ public class SiardExtractorImpl implements SiardExtractor {
             throw e;
         } catch(Exception e) {
             log.maybePrintStackTrace(e);
-            throw new SiardError(e.toString() + System.lineSeparator());
+            throw new SiardError(e + System.lineSeparator());
         }
     }
 }
