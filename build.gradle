@@ -80,7 +80,7 @@ tasks.register("extract_siardcmd-2.2.1-etc", Copy) {
 compileJava.dependsOn("extract_siardcmd-2.2.1-etc")
 
 dependencies {
-    implementation("io.github.bonede:tree-sitter:0.22.5a")
+    implementation("io.github.bonede:tree-sitter:0.22.6.1")
     implementation("no.nr:tree-sitter-ng-dbspec:1.0")
 
     implementation("commons-cli:commons-cli:1.7.0")
