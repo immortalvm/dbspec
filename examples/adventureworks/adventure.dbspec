@@ -135,7 +135,7 @@ Metadata for dbc:
 	dataOwner = dataOwner
 	dataOriginTimespan = dataOriginTimespan
 	description:
-		This is the original AdventureWorkds PostgreSQL database.
+		This is the original AdventureWorks PostgreSQL database.
 
 ## Alternatively (since SIARD Suite extracts such comments as metadata):
 # Execute via dbc:
