@@ -19,6 +19,12 @@ Metadata for conn:
 			FROM trace
 			WHERE id = $${i}
 			AND (data)."url" = '${url}'
+	Command:
+		title:
+			Command with
+			newline in title
+		Body:
+			Select 1
 
 Output conn to "my.siard"
 
@@ -41,7 +47,8 @@ Set mdo:
 	(COMMAND null "Get extractions" (PARAMETER i null) (SQL null "SELECT data
 	FROM trace
 	WHERE id = $${i}
-	AND (data).\"url\" = '@{url}'"))
+	AND (data).\"url\" = '@{url}'")) (COMMAND null "Command with
+	newline in title" (SQL null "Select 1"))
 
 Set res = result via conn:
 	SELECT 1
