@@ -554,7 +554,9 @@ public class Interpreter {
         commandMds.computeIfAbsent(parent, x -> new ArrayList<>()).add(md);
         log.debugIndented(level, "* Command declaration: %s", titleString);
         TSNode parameters = n.getChildByFieldName("parameters");
-        interpretCommandParameters(parameters, level + 1, ctx, md);
+        if (parameters != null) {
+            interpretCommandParameters(parameters, level + 1, ctx, md);
+        }
         TSNode body = n.getChildByFieldName("body");
 
         Set<String> parameterSet = md
