@@ -46,12 +46,22 @@ public class Dbms {
                 ResultSet.CONCUR_READ_ONLY);
         int i = 1;
         for (Object x : args) {
-            // TODO: Should we also support setString or other types?
-            if (x instanceof String) ps.setNString(i, (String)x);
+            // TODO: Should we also support other types?
+            if (x instanceof String) setNString(ps, i, (String)x);
             else if (x instanceof BigInteger) ps.setBigDecimal(i, new BigDecimal((BigInteger)x));
             else throw new SQLException("Only string and integer arguments are currently supported.");
             i++;
         }
         return ps;
+    }
+
+    private static void setNString(PreparedStatement ps, int parameterIndex, String value) throws SQLException {
+        try {
+            ps.setNString(parameterIndex, value);
+        } catch (SQLException e) {
+            // Since PostgreSQL JDBC driver does not have NCHAR or NVARCHAR.
+            // TODO: Can we do better than this?
+            ps.setString(parameterIndex, value);
+        }
     }
 }
