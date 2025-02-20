@@ -7,6 +7,7 @@ Set root = result using "/usr/bin/env bash":
 Set root = root.stripped
 Set build = "${root}/build"
 Set siard = "${build}/${db}.siard"
+Set roae =  "${build}/${db}.roae"
 
 Set dist = "${root}/dist"
 
@@ -38,6 +39,7 @@ Execute using "/usr/bin/env bash":
 	mkdir other
 	mkdir descriptive
 	cd ..
+	cp "${roae}" . # Is this the right place?
 	mkdir data && cd $_
 	cp "${siard}" .
 	cd ../../..

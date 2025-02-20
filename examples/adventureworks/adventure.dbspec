@@ -112,7 +112,7 @@ Log "Extract (native) view queries..."
 Set views = result via dbc:
 	SELECT schemaname, viewname, definition
 	FROM pg_views
-	WHERE viewowner='$${user}'
+	WHERE viewowner = $${user}
 
 Assert views.size == 21
 
@@ -136,10 +136,24 @@ Metadata for dbc:
 	dataOriginTimespan = dataOriginTimespan
 	description:
 		This is the original AdventureWorks PostgreSQL database.
+	## Alternative (since SIARD Suite extracts such comments as metadata):
+	# Execute via dbc:
+	# 	COMMENT ON DATABASE adventure0 IS 'This is the AdventureWorkds PostgreSQL database';
 
-## Alternatively (since SIARD Suite extracts such comments as metadata):
-# Execute via dbc:
-# 	COMMENT ON DATABASE adventure0 IS 'This is the AdventureWorkds PostgreSQL database';
+	# .roae
+	Command:
+		title = "Find person by name"
+		Parameters:
+			fn - First name
+			mn - Middle name (leave empty if missing)
+			ln - Last name
+		Body:
+			SELECT p.BusinessEntityID
+			FROM person.Person p
+			WHERE p.FirstName = $${fn}
+			  AND coalesce(p.MiddleName, '') = $${mn}
+			  AND p.LastName = $${mn};
+
 
 Set siard = "${build}/${db}.siard"
 
