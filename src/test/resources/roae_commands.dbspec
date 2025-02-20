@@ -35,11 +35,13 @@ Set res = result via conn:
 	AND (data)."filename" = 'my.siard'
 Assert res.size == 1
 
+# Change interpolation symbol so that we can use $ freely below.
+Interpolation symbol = '@'
 Set mdo:
 	(COMMAND null "Get extractions" (PARAMETER i null) (SQL null "SELECT data
 	FROM trace
-	WHERE id = ${"$$"}{i}
-	AND (data).\"url\" = '${url}'"))
+	WHERE id = $${i}
+	AND (data).\"url\" = '@{url}'"))
 
 Set res = result via conn:
 	SELECT 1
@@ -47,5 +49,5 @@ Set res = result via conn:
 	WHERE id = 2
 	AND (data)."type" = 'roae'
 	AND (data)."filename" = 'my.roae'
-	AND (data)."mdo" = $${mdo}
+	AND (data)."mdo" = @@{mdo}
 Assert res.size == 1
