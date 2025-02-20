@@ -22,4 +22,4 @@ Set message:
 Log message
 
 # This fails:
-Log connection
+Log conn
