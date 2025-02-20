@@ -21,10 +21,13 @@ public class RoaeProducerImpl implements RoaeProducer {
             } else {
                 output.format("\ttitle = \"%s\"\n", title);
             }
-            output.format("\tParameters:\n");
-            for (RoaeMd pObj : cObj.getChildren(RoaeMdType.PARAMETER)) {
-                String description = pObj.getData();
-                output.format("\t\t%s - %s\n", pObj.getName(), description == null ? "" : description);
+            List<RoaeMd> parameters = cObj.getChildren(RoaeMdType.PARAMETER);
+            if (!parameters.isEmpty()) {
+                output.format("\tParameters:\n");
+                for (RoaeMd pObj : parameters) {
+                    String description = pObj.getData();
+                    output.format("\t\t%s - %s\n", pObj.getName(), description == null ? "" : description);
+                }
             }
             output.format("\tBody:\n");
             for (RoaeMd sObj : cObj.getChildren(RoaeMdType.SQL)) {
