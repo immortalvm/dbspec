@@ -14,7 +14,13 @@ public class RoaeProducerImpl implements RoaeProducer {
         PrintWriter output = new PrintWriter(new FileWriter(path.toFile()));
         for (RoaeMd cObj : commands) {
             output.format("Command:\n");
-            output.format("\ttitle = \"%s\"\n", cObj.getData());
+            String title = cObj.getData();
+            if (title.contains("\n") || title.contains("\"")) {
+                output.format("\ttitle:\n");
+                outputIndented(output, title);
+            } else {
+                output.format("\ttitle = \"%s\"\n", title);
+            }
             output.format("\tParameters:\n");
             for (RoaeMd pObj : cObj.getChildren(RoaeMdType.PARAMETER)) {
                 String description = pObj.getData();
@@ -22,12 +28,16 @@ public class RoaeProducerImpl implements RoaeProducer {
             }
             output.format("\tBody:\n");
             for (RoaeMd sObj : cObj.getChildren(RoaeMdType.SQL)) {
-                for (String line : sObj.getData().split("\n")) {
-                    output.format("\t\t%s\n", line);
-                }
+                outputIndented(output, sObj.getData());
             }
             output.format("\n");
         }
         output.close();
+    }
+
+    private static void outputIndented(PrintWriter output, String text) {
+        for (String line : text.split("\n")) {
+            output.format("\t\t%s\n", line);
+        }
     }
 }
