@@ -6,8 +6,8 @@ FROM docker.io/library/ubuntu:22.04 AS build
 RUN apt-get update && apt-get install -y \
     openjdk-11-jdk-headless
 
-ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
-ENV LANG C.UTF-8
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV LANG=C.UTF-8
 
 COPY . /dbspec
 WORKDIR /dbspec
