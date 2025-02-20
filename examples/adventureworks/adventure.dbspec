@@ -153,7 +153,12 @@ Metadata for dbc:
 			WHERE p.FirstName = $${fn}
 			  AND coalesce(p.MiddleName, '') = $${mn}
 			  AND p.LastName = $${mn};
-
+	Command:
+		title:
+			Degenerate command
+			with multi-line title
+		Body:
+			Select 1
 
 Set siard = "${build}/${db}.siard"
 
