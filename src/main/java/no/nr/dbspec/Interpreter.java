@@ -407,8 +407,9 @@ public class Interpreter {
                 : interpretBasicExpression(field, level, ctx);
         ensureInstance(n, "The field '" + fieldName + "'", fieldString, String.class);
         log.debugIndented(level, "* SIARD metadata %s: %s", fieldName, fieldString);
-        SiardMd md = new SiardMd(SiardMdType.INFO, fieldName, (String)fieldString);
-        parent.add(md);
+        if (parent != null) {
+            parent.add(new SiardMd(SiardMdType.INFO, fieldName, (String)fieldString));
+        }
         return (String)fieldString;
     }
 
