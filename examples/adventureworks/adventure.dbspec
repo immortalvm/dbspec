@@ -152,7 +152,7 @@ Metadata for dbc:
 			FROM person.Person p
 			WHERE p.FirstName = $${fn}
 			  AND coalesce(p.MiddleName, '') = $${mn}
-			  AND p.LastName = $${mn};
+			  AND p.LastName = $${ln};
 	Command:
 		title:
 			Degenerate command
