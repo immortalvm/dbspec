@@ -1,0 +1,3 @@
+# Expected exit status code: SEMANTIC_ERROR
+
+Assert 1 == "1"

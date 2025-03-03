@@ -1,0 +1,15 @@
+# Expected exit status code: SEMANTIC_ERROR
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Set res = result via conn:
+	SELECT * FROM trace
+
+Assert res == res
