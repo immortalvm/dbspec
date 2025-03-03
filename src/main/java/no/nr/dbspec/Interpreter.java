@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -605,13 +604,13 @@ public class Interpreter {
         log.debugIndented(level, "* for_loop: %s in %s",
                 String.join(", ", variablesStrings), resultSetString);
         ResultSet rs = (ResultSet)(ctx.getValue(resultSetString));
+        int expectedCols = variablesStrings.size();
         try {
-            ResultSetMetaData rsmeta = rs.getMetaData();
-            int ncols = Math.min(variablesStrings.size(), rsmeta.getColumnCount());
+            int actualCols = rs.getMetaData().getColumnCount();
             rs.beforeFirst();
             while (rs.next()) {
-                for (int i = 0; i < ncols; i++) {
-                    String colValue = rs.getString(i + 1);
+                for (int i = 0; i < expectedCols; i++) {
+                    String colValue = i < actualCols ? rs.getString(i + 1) : null;
                     if (colValue == null) {
                         ctx.clearValue(variablesStrings.get(i));
                     } else {
