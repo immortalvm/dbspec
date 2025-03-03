@@ -666,24 +666,43 @@ public class Interpreter {
         String operatorString = interpretComparisonOperator(operator, level + 1);
         TSNode right = n.getChildByFieldName("right");
         Object rightValue = interpretBasicExpression(right, level + 1, ctx);
-        ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class);
-        ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class);
-        int comparisonValue = ((BigInteger)leftValue).compareTo((BigInteger)rightValue);
-        switch (operatorString) {
-            case "==":
-                return comparisonValue == 0;
-            case "!=":
-                return comparisonValue != 0;
-            case "<":
-                return comparisonValue < 0;
-            case ">":
-                return comparisonValue > 0;
-            case "<=":
-                return comparisonValue < 1;
-            case ">=":
-                return comparisonValue > -1;
-            default:
-                throw new AstError(n);
+        ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class, String.class);
+        ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class, String.class);
+        if (leftValue.getClass() != rightValue.getClass()) {
+            throw new SemanticError(n, "Both sides must have the same type. Use .as_integer if necessary.");
+        }
+        if (leftValue instanceof BigInteger) {
+            int comparisonValue = ((BigInteger) leftValue).compareTo((BigInteger) rightValue);
+            switch (operatorString) {
+                case "==":
+                    return comparisonValue == 0;
+                case "!=":
+                    return comparisonValue != 0;
+                case "<":
+                    return comparisonValue < 0;
+                case ">":
+                    return comparisonValue > 0;
+                case "<=":
+                    return comparisonValue < 1;
+                case ">=":
+                    return comparisonValue > -1;
+                default:
+                    throw new AstError(n);
+            }
+        } else {
+            switch (operatorString) {
+                case "==":
+                    return leftValue.equals(rightValue);
+                case "!=":
+                    return !leftValue.equals(rightValue);
+                case "<":
+                case ">":
+                case "<=":
+                case ">=":
+                    throw new SemanticError(n, "The only comparisons allowed between strings are == and !=.");
+                default:
+                    throw new AstError(n);
+            }
         }
     }
 

@@ -1,0 +1,4 @@
+# Expected exit status code: OK
+
+Assert "abc" == "abc"
+Assert "abc" != "ABC"

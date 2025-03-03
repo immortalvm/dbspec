@@ -1,0 +1,7 @@
+# Expected exit status code: ASSERTION_FAILURE
+
+# NB. No final newline.
+Set x:
+	xyz
+
+Assert x != "xyz"
