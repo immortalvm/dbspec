@@ -1,0 +1,20 @@
+# Expected exit status code: OK
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Set r1 = result via conn:
+	SELECT * FROM trace
+
+Assert r1 == r1
+
+Set r2 = result via conn:
+	SELECT * FROM trace
+
+Assert r1 == r2

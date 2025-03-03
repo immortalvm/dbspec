@@ -5,13 +5,13 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -315,7 +315,7 @@ public class Interpreter {
         }
     }
 
-    ResultSet interpretQuery(TSNode n, int level, Context ctx) {
+    Rows interpretQuery(TSNode n, int level, Context ctx) {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         Object connectionObject = ctx.getValue(connectionString);
@@ -324,7 +324,7 @@ public class Interpreter {
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
         log.debugIndented(level, "* Executing SQL query on connection %s: '%s'", connectionString, pair.getKey());
         try {
-            return dbms.executeSqlQuery((Connection)connectionObject, pair);
+            return new ResultSetRows(dbms.executeSqlQuery((Connection)connectionObject, pair));
         } catch (SQLException e) {
             throw new SqlError(n, e.getMessage());
         }
@@ -603,24 +603,32 @@ public class Interpreter {
         TSNode body = n.getChildByFieldName("body");
         log.debugIndented(level, "* for_loop: %s in %s",
                 String.join(", ", variablesStrings), resultSetString);
-        ResultSet rs = (ResultSet)(ctx.getValue(resultSetString));
+        Object resObj = ctx.getValue(resultSetString);
+        ensureInstance(n, "The expression", resObj, Rows.class);
+        Rows rs = (Rows)(resObj);
         int expectedCols = variablesStrings.size();
         try {
-            int actualCols = rs.getMetaData().getColumnCount();
-            rs.beforeFirst();
-            while (rs.next()) {
+            if (!rs.tryLockAndRewind()) {
+                throw new SemanticError(n, "Nested iteration over the same rows is not allowed.");
+            }
+            String[] row;
+            while ((row = rs.next()) != null) {
+                int actualCols = row.length;
                 for (int i = 0; i < expectedCols; i++) {
-                    String colValue = i < actualCols ? rs.getString(i + 1) : null;
+                    String colValue = i < actualCols ? row[i] : null;
+                    String var = variablesStrings.get(i);
                     if (colValue == null) {
-                        ctx.clearValue(variablesStrings.get(i));
+                        ctx.clearValue(var);
                     } else {
-                        ctx.setValue(variablesStrings.get(i), colValue);
+                        ctx.setValue(var, colValue);
                     }
                 }
                 interpretStatementBlock(body, level + 1, ctx);
             }
         } catch (SQLException e) {
             throw new SqlError(n, "Problem iterating through the result set:\n" + e.getMessage());
+        } finally {
+            rs.free();
         }
     }
 
@@ -665,8 +673,8 @@ public class Interpreter {
         String operatorString = interpretComparisonOperator(operator, level + 1);
         TSNode right = n.getChildByFieldName("right");
         Object rightValue = interpretBasicExpression(right, level + 1, ctx);
-        ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class, String.class);
-        ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class, String.class);
+        ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class, String.class, Rows.class);
+        ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class, String.class, Rows.class);
         if (leftValue.getClass() != rightValue.getClass()) {
             throw new SemanticError(n, "Both sides must have the same type. Use .as_integer if necessary.");
         }
@@ -688,7 +696,7 @@ public class Interpreter {
                 default:
                     throw new AstError(n);
             }
-        } else {
+        } else if (leftValue instanceof String) {
             switch (operatorString) {
                 case "==":
                     return leftValue.equals(rightValue);
@@ -698,9 +706,57 @@ public class Interpreter {
                 case ">":
                 case "<=":
                 case ">=":
-                    throw new SemanticError(n, "The only comparisons allowed between strings are == and !=.");
+                    throw new SemanticError(n, "The only comparisons allowed between strings are '==' and '!='.");
                 default:
                     throw new AstError(n);
+            }
+        }
+        else { // Rows
+            boolean eq;
+            switch (operatorString) {
+                case "==":
+                    eq = true;
+                    break;
+                case "!=":
+                    eq = false;
+                    break;
+                case "<":
+                case ">":
+                case "<=":
+                case ">=":
+                    throw new SemanticError(n, "The only comparisons allowed between lists of rows are '==' and '!='.");
+                default:
+                    throw new AstError(n);
+            }
+            Rows ls = (Rows)leftValue;
+            Rows rs = (Rows)rightValue;
+            if (ls == rs) {
+                return eq;
+            }
+            try {
+                if (!ls.tryLockAndRewind()) {
+                    throw new SemanticError(n, "Already iterating over the left side.");
+                }
+                if (!rs.tryLockAndRewind()) {
+                    throw new SemanticError(n, "Already iterating over the right side.");
+                }
+                String[] lr, rr;
+                while ((lr = ls.next()) != null && (rr = rs.next()) != null) {
+                    if (lr.length != rr.length) {
+                        return !eq;
+                    }
+                    for (int i = 0; i < lr.length; i++) {
+                        if (!Objects.equals(lr[i], rr[i])) {
+                            return !eq;
+                        }
+                    }
+                }
+                return ((lr == null) && (rs.next() == null)) == eq;
+            } catch (SQLException e) {
+                throw new SqlError(n, "Problem checking if the result sets are identical:\n" + e.getMessage());
+            } finally {
+                ls.free();
+                rs.free();
             }
         }
     }
@@ -748,17 +804,13 @@ public class Interpreter {
             } else {
                 throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
             }
-        } else if (leftValue instanceof ResultSet) {
+        } else if (leftValue instanceof Rows) {
             if (rightOperator.equals("size")) {
-                ResultSet rs = (ResultSet)leftValue;
+                Rows rs = (Rows)leftValue;
                 try {
-                    int currentRow = rs.getRow();
-                    rs.last();
-                    int lastRow = rs.getRow();
-                    rs.absolute(currentRow);
-                    return BigInteger.valueOf(lastRow);
+                    return BigInteger.valueOf(rs.getSize());
                 } catch (SQLException e) {
-                    throw new SqlError(n, "Problem finding the size of the result set:\n" + e.getMessage());
+                    throw new SqlError(n, "Problem finding the number of rows:\n" + e.getMessage());
                 }
             } else {
                 throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
