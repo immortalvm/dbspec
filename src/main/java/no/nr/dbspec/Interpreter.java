@@ -604,8 +604,8 @@ public class Interpreter {
         log.debugIndented(level, "* for_loop: %s in %s",
                 String.join(", ", variablesStrings), resultSetString);
         Object resObj = ctx.getValue(resultSetString);
-        ensureInstance(n, "The expression", resObj, Rows.class);
-        Rows rs = (Rows)(resObj);
+        ensureInstance(n, "The expression", resObj, Rows.class, String.class);
+        Rows rs = asRows(n, resObj);
         int expectedCols = variablesStrings.size();
         try {
             if (!rs.tryLockAndRewind()) {
@@ -675,10 +675,7 @@ public class Interpreter {
         Object rightValue = interpretBasicExpression(right, level + 1, ctx);
         ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class, String.class, Rows.class);
         ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class, String.class, Rows.class);
-        if (leftValue.getClass() != rightValue.getClass()) {
-            throw new SemanticError(n, "Both sides must have the same type. Use .as_integer if necessary.");
-        }
-        if (leftValue instanceof BigInteger) {
+        if (leftValue instanceof BigInteger && rightValue instanceof BigInteger) {
             int comparisonValue = ((BigInteger) leftValue).compareTo((BigInteger) rightValue);
             switch (operatorString) {
                 case "==":
@@ -696,7 +693,7 @@ public class Interpreter {
                 default:
                     throw new AstError(n);
             }
-        } else if (leftValue instanceof String) {
+        } else if (leftValue instanceof String && rightValue instanceof String) {
             switch (operatorString) {
                 case "==":
                     return leftValue.equals(rightValue);
@@ -710,8 +707,8 @@ public class Interpreter {
                 default:
                     throw new AstError(n);
             }
-        }
-        else { // Rows
+        } else if ((leftValue instanceof Rows || leftValue instanceof String)
+                && (rightValue instanceof Rows || rightValue instanceof String)) { // Rows
             boolean eq;
             switch (operatorString) {
                 case "==":
@@ -728,8 +725,8 @@ public class Interpreter {
                 default:
                     throw new AstError(n);
             }
-            Rows ls = (Rows)leftValue;
-            Rows rs = (Rows)rightValue;
+            Rows ls = asRows(n, leftValue);
+            Rows rs = asRows(n, rightValue);
             if (ls == rs) {
                 return eq;
             }
@@ -758,7 +755,19 @@ public class Interpreter {
                 ls.free();
                 rs.free();
             }
+        } else {
+            throw new SemanticError(n, "Comparing expressions with incompatible types. Use .as_integer if necessary.");
         }
+    }
+
+    private Rows asRows(TSNode n, Object obj) {
+        if (obj instanceof Rows) {
+            return (Rows) obj;
+        }
+        if (obj instanceof String) {
+            return new StringRows((String) obj);
+        }
+        throw new AstError(n);
     }
 
     Object interpretBasicExpression(TSNode n, int level, Context ctx) {

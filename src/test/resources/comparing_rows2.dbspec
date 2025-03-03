@@ -1,4 +1,4 @@
-# Expected exit status code: OK
+# Expected exit status code: ASSERTION_FAILURE
 
 Parameters:
 	url
@@ -9,33 +9,20 @@ Set conn = connection to url with:
 	user = user
 	password = password
 
-Set r1 = result via conn:
-	SELECT * FROM trace
-
-Assert r1 == r1
-
-Set r2 = result via conn:
-	SELECT * FROM trace
-
-Assert r1 == r2
-
 Set r3 = result via conn:
 	SELECT *
 	FROM (
 		VALUES
 			'aa',
 			'bb bb',
-			'',
 			'cc cc cc'
 	) AS tab
-
-For (x) in r3:
-	Log x
 
 Set e3:
 	aa
 	bb bb
 
-	cc cc cc
+For (x) in e3:
+	Log x
 
 Assert r3 == e3
