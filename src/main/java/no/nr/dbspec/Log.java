@@ -52,7 +52,7 @@ public class Log {
             String prefix = "DEBUG: " + "  ".repeat(indent);
             unpack(args);
             String m = String.format(message, args);
-            String[] lines = m.split("\n");
+            String[] lines = Utils.newline.split(m, -1);
             System.err.println(Arrays.stream(lines).map(x -> prefix + x).collect(Collectors.joining("\n")));
         }
     }

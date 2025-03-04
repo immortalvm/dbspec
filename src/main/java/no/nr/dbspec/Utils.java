@@ -4,9 +4,24 @@ import org.treesitter.TSNode;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Utils {
+
+    public static final Pattern newline = Pattern.compile("\r?\n");
+
+    /**
+     * The last line may or may not end with \r?\n,
+     * i.e. at most one trailing empty line is skipped.
+     * See the unit test for details.
+     */
+    public static String[] lines(String str) {
+        // -1: Include trailing empty strings, also after final newline/CRLF.
+        String[] a = newline.split(str, -1);
+        int n = a.length;
+        return n > 0 && a[n - 1].isEmpty() ? Arrays.copyOfRange(a, 0, n - 1) : a;
+    }
 
     public static String escape(Object obj, boolean properly){
         if (obj instanceof String) {

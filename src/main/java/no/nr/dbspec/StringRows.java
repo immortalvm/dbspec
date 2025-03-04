@@ -8,7 +8,7 @@ public class StringRows implements Rows {
     int pos = -1;
 
     public StringRows(String str) {
-        this.rows = str.split("\r?\n");
+        this.rows = Utils.lines(str);
     }
     
     @Override
