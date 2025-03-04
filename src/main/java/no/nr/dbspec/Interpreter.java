@@ -170,7 +170,7 @@ public class Interpreter {
     }
 
     void interpretParameters(TSNode n, int level, NormalContext ctx) {
-        log.debugIndented(level,"* parameters");
+        log.debugIndented(level,"* Parameters");
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
                 interpretParameter(c, level + 1, ctx);
@@ -185,7 +185,7 @@ public class Interpreter {
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
         String descriptionString = interpretShortDescrOf(n, level, ctx);
-        log.debugIndented(level, "* parameter: %s  [%s]", nameString, descriptionString);
+        log.debugIndented(level, "* Parameter: %s  [%s]", nameString, descriptionString);
     }
 
     void interpretStatement(TSNode n, int level, NormalContext ctx) {
@@ -238,12 +238,8 @@ public class Interpreter {
         TSNode name = n.getChildByFieldName("name");
         String variableName = interpretIdentifier(name, level + 1);
         TSNode value = n.getChildByFieldName("value");
-        Object variableValue = null;
-        if (value.getType().equals("raw")) {
-            variableValue = interpretRaw(value, level, ctx);
-        } else {
-            variableValue = interpretExpression(value, level, ctx);
-        }
+        Object variableValue = value.getType().equals("raw") ? interpretRaw(value, level, ctx)
+                                                             : interpretExpression(value, level, ctx);
         if (variableValue == null) {
             throw new AstError(n);
         }
@@ -281,9 +277,8 @@ public class Interpreter {
         ensureInstance(n, "The interpreter command/path", interpreterString, String.class);
         TSNode script = n.getChildByFieldName("script");
         String scriptString = interpretRaw(script, level + 1, ctx);
-        String scriptResult = scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
-        log.debugIndented(level, "* Executing using interpreter %s: '%s'", (String)interpreterString, scriptString);
-        return scriptResult;
+        log.debugIndented(level, "* Executing using interpreter %s: '%s'", interpreterString, scriptString);
+        return scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
     }
 
     Connection interpretConnection(TSNode n, int level, Context ctx) {
@@ -291,7 +286,7 @@ public class Interpreter {
         Object urlString = interpretBasicExpression(url, level, ctx);
         ensureInstance(n, "The URL", urlString, String.class);
         TSNode properties = n.getChildByFieldName("properties");
-        log.debugIndented(level, "* connection: %s", (String)urlString);
+        log.debugIndented(level, "* Connection: %s", urlString);
         NormalContext connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
         try {
             return dbms.connect((String)urlString, connectionContext);
@@ -307,7 +302,7 @@ public class Interpreter {
         ensureInstance(n, "The target", connectionObject, Connection.class);
         TSNode sql = n.getChildByFieldName("sql");
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
-        log.debugIndented(level, "* Executing SQL on connection %s: '%s'", connectionString, pair.getKey());
+        log.debugIndented(level, "* Executing SQL via connection %s: '%s'", connectionString, pair.getKey());
         try {
             dbms.executeSqlUpdate((Connection)connectionObject, pair);
         } catch (SQLException e) {
@@ -322,7 +317,7 @@ public class Interpreter {
         ensureInstance(n, "The target", connectionObject, Connection.class);
         TSNode sql = n.getChildByFieldName("sql");
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
-        log.debugIndented(level, "* Executing SQL query on connection %s: '%s'", connectionString, pair.getKey());
+        log.debugIndented(level, "* Executing SQL query via connection %s: '%s'", connectionString, pair.getKey());
         try {
             return new ResultSetRows(dbms.executeSqlQuery((Connection)connectionObject, pair));
         } catch (SQLException e) {
@@ -576,7 +571,7 @@ public class Interpreter {
     }
 
     void interpretCommandParameters(TSNode n, int level, NormalContext ctx, RoaeMd parent) {
-        log.debugIndented(level, "* parameters");
+        log.debugIndented(level, "* Parameters");
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("parameter")) {
                 interpretCommandParameter(c, level + 1, ctx, parent);
@@ -592,7 +587,7 @@ public class Interpreter {
         ctx.setValue(nameString, config.getProperty(nameString));
         String descriptionString = interpretShortDescrOf(n, level, ctx);
         parent.add(new RoaeMd(RoaeMdType.PARAMETER, nameString, descriptionString));
-        log.debugIndented(level, "* parameter: %s  [%s]", nameString, descriptionString);
+        log.debugIndented(level, "* Parameter: %s  [%s]", nameString, descriptionString);
     }
 
     void interpretForLoop(TSNode n, int level, NormalContext ctx) {
@@ -601,7 +596,7 @@ public class Interpreter {
         TSNode resultSet = n.getChildByFieldName("result_set");
         String resultSetString = interpretIdentifier(resultSet, level + 1);
         TSNode body = n.getChildByFieldName("body");
-        log.debugIndented(level, "* for_loop: %s in %s",
+        log.debugIndented(level, "* For loop: %s in %s",
                 String.join(", ", variablesStrings), resultSetString);
         Object resObj = ctx.getValue(resultSetString);
         ensureInstance(n, "The expression", resObj, Rows.class, String.class);
@@ -660,7 +655,7 @@ public class Interpreter {
     }
 
     void interpretStatementBlock(TSNode n, int level, NormalContext ctx) {
-        log.debugIndented(level, "* statement_block");
+        log.debugIndented(level, "* Statement block");
         getChildren(n).forEach((TSNode c) -> {
             interpretStatement(c, level, ctx);
         });

@@ -47,6 +47,7 @@ public class Log {
         debugIndented(0, message, args);
     }
 
+    // NB. This is the primary (only?) place we actually use 'indent'.
     public void debugIndented(int indent, String message, Object... args) {
         if (level >= DEBUG) {
             String prefix = "DEBUG: " + "  ".repeat(indent);
