@@ -14,12 +14,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ScriptRunnerImpl implements ScriptRunner {
-    final static String EXEC_MARKER = "#!";
+    private static final String EXEC_MARKER = "#!";
 
     // From https://stackoverflow.com/a/21541615
     private static final boolean isPosix =
             FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
 
+    /**
+     * NB. Strips (at most one) final \r?\n from the output.
+     */
     @Override
     public String execute(TSNode n, String interpreter, String script, Path dir) {
         String result;
@@ -59,6 +62,6 @@ public class ScriptRunnerImpl implements ScriptRunner {
         } catch (InterruptedException e) {
             throw new ScriptError(n, "Interrupted");
         }
-        return result;
+        return Utils.stripFinalNewline(result);
     }
 }

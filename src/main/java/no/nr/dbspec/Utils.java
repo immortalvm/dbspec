@@ -11,6 +11,14 @@ public class Utils {
 
     public static final Pattern newline = Pattern.compile("\r?\n");
 
+    public static String stripFinalNewline(String str) {
+        // There might be more elegant ways to do this...
+        int n = str.length();
+        return n < 1 || str.charAt(n - 1) != '\n' ? str
+                : n < 2 || str.charAt(n - 2) != '\r' ? str.substring(0, n - 1)
+                : str.substring(0, n - 2);
+    }
+
     /**
      * The last line may or may not end with \r?\n,
      * i.e. at most one trailing empty line is skipped.
@@ -18,9 +26,7 @@ public class Utils {
      */
     public static String[] lines(String str) {
         // -1: Include trailing empty strings, also after final newline/CRLF.
-        String[] a = newline.split(str, -1);
-        int n = a.length;
-        return n > 0 && a[n - 1].isEmpty() ? Arrays.copyOfRange(a, 0, n - 1) : a;
+        return newline.split(stripFinalNewline(str), -1);
     }
 
     public static String escape(Object obj, boolean properly){

@@ -4,7 +4,6 @@
 Set db = "adventure"
 Set root = result using "/usr/bin/env bash":
 	pwd
-Set root = root.stripped
 Set build = "${root}/build"
 Set siard = "${build}/${db}.siard"
 Set roae =  "${build}/${db}.roae"

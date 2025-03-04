@@ -10,7 +10,6 @@ Parameters:
 Set db = "adventure"
 Set root = result using "/usr/bin/env bash":
 	pwd
-Set root = root.stripped
 Set build = "${root}/build"
 
 

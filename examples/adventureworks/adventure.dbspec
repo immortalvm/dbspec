@@ -13,12 +13,9 @@ Set dataOwner = "Contoso, Ltd."
 Set dataOriginTimespan = "2005-2023"
 
 # We assume the current directory as root.
-# Notice that we must strip the result since it includes a trailing newline.
-# (We consider adding a new language construct for this.)
+# Notice that stripping (at most one) trailing newline is now done implicitly.
 Set root = result using "/usr/bin/env bash":
 	pwd
-Set root = root.stripped
-
 Set build = "${root}/build"
 
 
