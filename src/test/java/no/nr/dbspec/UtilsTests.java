@@ -2,8 +2,7 @@ package no.nr.dbspec;
 
 import org.junit.jupiter.api.Test;
 
-import static no.nr.dbspec.Utils.lines;
-import static no.nr.dbspec.Utils.stripFinalNewline;
+import static no.nr.dbspec.Utils.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class UtilsTests {
@@ -26,5 +25,16 @@ public class UtilsTests {
         assertArrayEquals(new String[]{"abc", "", "def", ""}, lines("abc\n\ndef\n\n"));
         assertArrayEquals(new String[]{"abc\r"}, lines("abc\r"));
         assertArrayEquals(new String[]{"", "abc"}, lines("\nabc"));
+    }
+
+    @Test
+    void test_prefixAndFixLineSeparators() {
+        String p = "prefix";
+        String lsp = System.lineSeparator() + p;
+        assertEquals(p, prefixAndFixLineSeparators(p, ""));
+        assertEquals(p + lsp, prefixAndFixLineSeparators(p, "\n"));
+        assertEquals(
+                p + "abc" + lsp + lsp + "def" + lsp,
+                prefixAndFixLineSeparators(p, "abc\n\ndef\r\n"));
     }
 }

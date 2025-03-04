@@ -1,8 +1,6 @@
 package no.nr.dbspec;
 
-import java.util.Arrays;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * Logging to standard error
@@ -29,17 +27,13 @@ public class Log {
      */
     public void error(String message, Object... args) {
         if (level > QUIET) {
-            unpack(args);
-            System.err.format("ERROR: " + message, args);
-            System.err.println();
+            printToStderr("ERROR: ", message, args);
         }
     }
 
     public void verbose(String message, Object... args) {
         if (level >= VERBOSE) {
-            unpack(args);
-            System.err.format(message, args);
-            System.err.println();
+            printToStderr("", message, args);
         }
     }
 
@@ -50,12 +44,16 @@ public class Log {
     // NB. This is the primary (only?) place we actually use 'indent'.
     public void debugIndented(int indent, String message, Object... args) {
         if (level >= DEBUG) {
-            String prefix = "DEBUG: " + "  ".repeat(indent);
-            unpack(args);
-            String m = String.format(message, args);
-            String[] lines = Utils.newline.split(m, -1);
-            System.err.println(Arrays.stream(lines).map(x -> prefix + x).collect(Collectors.joining("\n")));
+            printToStderr("DEBUG: " + "  ".repeat(indent), message, args);
         }
+    }
+
+    private static void printToStderr(String prefix, String message, Object[] args) {
+        unpack(args);
+        System.err.println(
+                Utils.prefixAndFixLineSeparators(
+                        prefix,
+                        String.format(message, args)));
     }
 
     private static void unpack(Object[] args) {

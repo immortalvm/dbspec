@@ -221,8 +221,7 @@ public class Interpreter {
         ensureInstance(n, "A log message ", message, String.class, BigInteger.class);
         log.debugIndented(level, "* Log message: '%s'", message);
         if (log.getLevel() > Log.QUIET) {
-            // TODO: Should we make sure to use System.lineSeparator() inside message as well?
-            System.out.println(message);
+            System.out.println(Utils.prefixAndFixLineSeparators("", "" + message));
         }
     }
 

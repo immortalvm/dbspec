@@ -29,6 +29,12 @@ public class Utils {
         return newline.split(stripFinalNewline(str), -1);
     }
 
+    public static String prefixAndFixLineSeparators(String prefix, String str) {
+        return Arrays.stream(newline.split(str, -1))
+                .map(x -> prefix + x)
+                .collect(Collectors.joining(System.lineSeparator()));
+    }
+
     public static String escape(Object obj, boolean properly){
         if (obj instanceof String) {
             String x = ((String) obj)
