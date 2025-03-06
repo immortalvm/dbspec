@@ -35,7 +35,7 @@ public class SiardExtractorImpl implements SiardExtractor {
     }
 
     @Override
-    public void transfer(Connection conn, Path path) throws SiardError {
+    public void transfer(Connection conn, Path path) throws SiardException {
         log.verbose("Creating/replacing %s...", path);
         try {
             String jdbcUrl = conn.getMetaData().getURL();
@@ -92,13 +92,13 @@ public class SiardExtractorImpl implements SiardExtractor {
                     sb.append(output);
                     sb.append(ls).append(dashes);
                 }
-                throw new SiardError(sb.toString());
+                throw new SiardException(sb.toString());
             }
-        } catch (SiardError e) {
+        } catch (SiardException e) {
             throw e;
         } catch(Exception e) {
             log.maybePrintStackTrace(e);
-            throw new SiardError(e + System.lineSeparator());
+            throw new SiardException(e);
         }
     }
 }

@@ -349,7 +349,7 @@ public class Interpreter {
         try {
             log.verbose("Creating/replacing %s.", path);
             siardExtractor.transfer(dbmsConnection, path);
-        } catch (SiardError e) {
+        } catch (SiardException e) {
             String reason = "SIARD transfer failed";
             if (!e.getReason().isEmpty()) {
                 reason += ": " + e.getReason();
@@ -363,7 +363,16 @@ public class Interpreter {
         } else {
             log.debugIndented(level, "* Additional SIARD metadata: %s", md);
             log.verbose("Adjusting metadata of %s.", path);
-            siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection, n);
+            try {
+                siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection);
+            } catch (SiardException e) {
+                // Maybe we should also delete the .siard file here to avoid confusion?
+                String reason = "Adjusting SIARD metadata failed";
+                if (!e.getReason().isEmpty()) {
+                    reason += ": " + e.getReason();
+                }
+                throw new SemanticError(n, reason); // TODO: Same issue as above.
+            }
         }
         String roaeFileString = skipExtension(fileString) + ".roae";
         try {

@@ -7,8 +7,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class MdBase<T extends Enum<T>, D extends MdBase<T, D>> {
-    protected final T type;
-    protected final String name;
+    private final T type;
+    private final String name;
     private final String data;
     private final List<D> children;
 
@@ -54,11 +54,13 @@ public abstract class MdBase<T extends Enum<T>, D extends MdBase<T, D>> {
     }
 
     public List<D> getChildren(T type) {
-        return childStream().filter((x) -> x.type == type).collect(Collectors.toList());
+        return childStream().filter((x) -> x.getType() == type).collect(Collectors.toList());
     }
 
     public D getChild(T type, String name) {
-        Optional<D> found = childStream().filter((x) -> x.type == type && x.name.equals(name)).findAny();
+        Optional<D> found = childStream()
+                .filter(x -> x.getType() == type && x.getName().equals(name))
+                .findAny();
         return found.orElse(null);
     }
 

@@ -92,7 +92,7 @@ public class Main {
                 config,
                 new SiardExtractorImpl(dbms, log, dir),
                 dbms,
-                new SiardMetadataAdjusterImpl(),
+                new SiardMetadataAdjusterImpl(log),
                 new RoaeProducerImpl());
 
         return i.interpret(file);

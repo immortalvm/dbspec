@@ -1,12 +1,12 @@
 package no.nr.dbspec;
 
-public class SiardError extends Exception {
+public class SiardException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
     String reason;
 
-    public SiardError(String reason) {
-        this.reason = reason;
+    public SiardException(Object reason) {
+        this.reason = reason == null ? "" : reason.toString();
     }
 
     public String getReason() {

@@ -1,7 +1,5 @@
 package no.nr.dbspec;
 
-import org.treesitter.TSNode;
-
 import java.sql.Connection;
 import java.util.Map;
 
@@ -13,7 +11,7 @@ public class SiardMetadataAdjusterFake implements SiardMetadataAdjuster {
     }
 
     @Override
-    public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection, TSNode n) {
+    public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection) {
         database.trace(Map.of(
                 "type", "adjustment",
                 "filename", siardFilename,
