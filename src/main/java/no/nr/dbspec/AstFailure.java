@@ -2,10 +2,10 @@ package no.nr.dbspec;
 
 import org.treesitter.TSNode;
 
-public class AstError extends Error {
+public class AstFailure extends RuntimeException {
     TSNode node;
 
-    AstError(TSNode node) {
+    AstFailure(TSNode node) {
         this.node = node;
     }
 }

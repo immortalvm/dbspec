@@ -2,11 +2,11 @@ package no.nr.dbspec;
 
 import org.treesitter.TSNode;
 
-public class SqlError extends Error {
+public class SqlFailure extends RuntimeException {
     String reason;
     TSNode node;
 
-    public SqlError(TSNode node, String reason) {
+    public SqlFailure(TSNode node, String reason) {
         this.node = node;
         this.reason = reason;
     }

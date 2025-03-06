@@ -64,7 +64,7 @@ public class Utils {
             }
         }
         String t = Arrays.stream(classes).map(Utils::shortName).collect(Collectors.joining(" or "));
-        throw new SemanticError(n, String.format("%s must be a%s %s, not %s.",
+        throw new SemanticFailure(n, String.format("%s must be a%s %s, not %s.",
                 errorMessageStart,
                 t.matches("[aeiouyAEIOUY].*") ? "n" : "",
                 t,

@@ -119,12 +119,12 @@ public class Interpreter {
             TSNode n = tree.getRootNode();
             interpretSourceFile(n, 0, context);
             return StatusCode.OK;
-        } catch (SemanticError e) {
+        } catch (SemanticFailure e) {
             log.error("Semantic error: %s", e.reason);
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
             return StatusCode.SEMANTIC_ERROR;
-        } catch (SqlError e) {
+        } catch (SqlFailure e) {
             log.error("SQL error - %s", e.reason);
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
@@ -139,7 +139,7 @@ public class Interpreter {
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
             return StatusCode.ASSERTION_FAILURE;
-        } catch (AstError e) {
+        } catch (AstFailure e) {
             log.error("Something went wrong when parsing.");
             logNodeLines(e.node);
             log.maybePrintStackTrace(e);
@@ -175,7 +175,7 @@ public class Interpreter {
             if (c.getType().equals("parameter")) {
                 interpretParameter(c, level + 1, ctx);
             } else {
-                throw new AstError(n);
+                throw new AstFailure(n);
             }
         });
     }
@@ -212,7 +212,7 @@ public class Interpreter {
         } else if (n.getType().equals("conditional")) {
             interpretConditional(n, level + 1, ctx);
         } else {
-            throw new AstError(n);
+            throw new AstFailure(n);
         }
     }
 
@@ -240,7 +240,7 @@ public class Interpreter {
         Object variableValue = value.getType().equals("raw") ? interpretRaw(value, level, ctx)
                                                              : interpretExpression(value, level, ctx);
         if (variableValue == null) {
-            throw new AstError(n);
+            throw new AstFailure(n);
         }
         log.debugIndented(level, "* Set %s = '%s'", variableName, variableValue);
         ctx.setValue(variableName, variableValue);
@@ -290,7 +290,7 @@ public class Interpreter {
         try {
             return dbms.connect((String)urlString, connectionContext);
         } catch (SQLException e) {
-            throw new SqlError(n, e.getMessage());
+            throw new SqlFailure(n, e.getMessage());
         }
     }
 
@@ -305,7 +305,7 @@ public class Interpreter {
         try {
             dbms.executeSqlUpdate((Connection)connectionObject, pair);
         } catch (SQLException e) {
-            throw new SqlError(n, e.getMessage());
+            throw new SqlFailure(n, e.getMessage());
         }
     }
 
@@ -320,7 +320,7 @@ public class Interpreter {
         try {
             return new ResultSetRows(dbms.executeSqlQuery((Connection)connectionObject, pair));
         } catch (SQLException e) {
-            throw new SqlError(n, e.getMessage());
+            throw new SqlFailure(n, e.getMessage());
         }
     }
 
@@ -355,7 +355,7 @@ public class Interpreter {
                 reason += ": " + e.getReason();
             }
             // TODO: SemanticError does not seems entirely appropriate here.
-            throw new SemanticError(n, reason);
+            throw new SemanticFailure(n, reason);
         }
         SiardMd md = siardMd.get(connectionString);
         if (md == null || !md.hasChildren()) {
@@ -371,7 +371,7 @@ public class Interpreter {
                 if (!e.getReason().isEmpty()) {
                     reason += ": " + e.getReason();
                 }
-                throw new SemanticError(n, reason); // TODO: Same issue as above.
+                throw new SemanticFailure(n, reason); // TODO: Same issue as above.
             }
         }
         String roaeFileString = skipExtension(fileString) + ".roae";
@@ -393,7 +393,7 @@ public class Interpreter {
             roaeProducer.updateMetadata(roaePath, commands);
         } catch (IOException e) {
             // TODO: SemanticError does not seems entirely appropriate here either.
-            throw new SemanticError(n, "Unable to write to " + roaeFileString + "\n" + e.getMessage());
+            throw new SemanticFailure(n, "Unable to write to " + roaeFileString + "\n" + e.getMessage());
         }
     }
 
@@ -584,7 +584,7 @@ public class Interpreter {
             if (c.getType().equals("parameter")) {
                 interpretCommandParameter(c, level + 1, ctx, parent);
             } else {
-                throw new AstError(n);
+                throw new AstFailure(n);
             }
         });
     }
@@ -612,7 +612,7 @@ public class Interpreter {
         int expectedCols = variablesStrings.size();
         try {
             if (!rs.tryLockAndRewind()) {
-                throw new SemanticError(n, "Nested iteration over the same rows is not allowed.");
+                throw new SemanticFailure(n, "Nested iteration over the same rows is not allowed.");
             }
             String[] row;
             while ((row = rs.next()) != null) {
@@ -629,7 +629,7 @@ public class Interpreter {
                 interpretStatementBlock(body, level + 1, ctx);
             }
         } catch (SQLException e) {
-            throw new SqlError(n, "Problem iterating through the result set:\n" + e.getMessage());
+            throw new SqlFailure(n, "Problem iterating through the result set:\n" + e.getMessage());
         } finally {
             rs.free();
         }
@@ -641,7 +641,7 @@ public class Interpreter {
             if (c.getType().equals("identifier")) {
                 variables.add(interpretIdentifier(c, level + 1));
             } else {
-                throw new AstError(n);
+                throw new AstFailure(n);
             }
         });
         return variables;
@@ -694,7 +694,7 @@ public class Interpreter {
                 case ">=":
                     return comparisonValue > -1;
                 default:
-                    throw new AstError(n);
+                    throw new AstFailure(n);
             }
         } else if (leftValue instanceof String && rightValue instanceof String) {
             switch (operatorString) {
@@ -706,9 +706,9 @@ public class Interpreter {
                 case ">":
                 case "<=":
                 case ">=":
-                    throw new SemanticError(n, "The only comparisons allowed between strings are '==' and '!='.");
+                    throw new SemanticFailure(n, "The only comparisons allowed between strings are '==' and '!='.");
                 default:
-                    throw new AstError(n);
+                    throw new AstFailure(n);
             }
         } else if ((leftValue instanceof Rows || leftValue instanceof String)
                 && (rightValue instanceof Rows || rightValue instanceof String)) { // Rows
@@ -724,9 +724,9 @@ public class Interpreter {
                 case ">":
                 case "<=":
                 case ">=":
-                    throw new SemanticError(n, "The only comparisons allowed between lists of rows are '==' and '!='.");
+                    throw new SemanticFailure(n, "The only comparisons allowed between lists of rows are '==' and '!='.");
                 default:
-                    throw new AstError(n);
+                    throw new AstFailure(n);
             }
             Rows ls = asRows(n, leftValue);
             Rows rs = asRows(n, rightValue);
@@ -735,10 +735,10 @@ public class Interpreter {
             }
             try {
                 if (!ls.tryLockAndRewind()) {
-                    throw new SemanticError(n, "Already iterating over the left side.");
+                    throw new SemanticFailure(n, "Already iterating over the left side.");
                 }
                 if (!rs.tryLockAndRewind()) {
-                    throw new SemanticError(n, "Already iterating over the right side.");
+                    throw new SemanticFailure(n, "Already iterating over the right side.");
                 }
                 String[] lr, rr;
                 while ((lr = ls.next()) != null && (rr = rs.next()) != null) {
@@ -753,13 +753,13 @@ public class Interpreter {
                 }
                 return ((lr == null) && (rs.next() == null)) == eq;
             } catch (SQLException e) {
-                throw new SqlError(n, "Problem checking if the result sets are identical:\n" + e.getMessage());
+                throw new SqlFailure(n, "Problem checking if the result sets are identical:\n" + e.getMessage());
             } finally {
                 ls.free();
                 rs.free();
             }
         } else {
-            throw new SemanticError(n, "Comparing expressions with incompatible types. Use .as_integer if necessary.");
+            throw new SemanticFailure(n, "Comparing expressions with incompatible types. Use .as_integer if necessary.");
         }
     }
 
@@ -770,7 +770,7 @@ public class Interpreter {
         if (obj instanceof String) {
             return new StringRows((String) obj);
         }
-        throw new AstError(n);
+        throw new AstFailure(n);
     }
 
     Object interpretBasicExpression(TSNode n, int level, Context ctx) {
@@ -784,7 +784,7 @@ public class Interpreter {
             case "dot_expression":
                 return interpretDotExpression(n, level + 1, ctx);
             default:
-                throw new AstError(n);
+                throw new AstFailure(n);
         }
     }
 
@@ -793,7 +793,7 @@ public class Interpreter {
         String identifierName = interpretIdentifier(identifier, level + 1);
         Object result = ctx.getValue(identifierName);
         if (result == null) {
-            throw new SemanticError(n, "The variable '" + identifierName + "' has not been set.");
+            throw new SemanticFailure(n, "The variable '" + identifierName + "' has not been set.");
         }
         return result;
     }
@@ -811,10 +811,10 @@ public class Interpreter {
                 try {
                     return new BigInteger((String)leftValue);
                 } catch (NumberFormatException e) {
-                    throw new SemanticError(n, "Not an integer: '" + leftValue + "'");
+                    throw new SemanticFailure(n, "Not an integer: '" + leftValue + "'");
                 }
             } else {
-                throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
+                throw new SemanticFailure(n, "Unsupported dot expression: " + rightOperator);
             }
         } else if (leftValue instanceof Rows) {
             if (rightOperator.equals("size")) {
@@ -822,13 +822,13 @@ public class Interpreter {
                 try {
                     return BigInteger.valueOf(rs.getSize());
                 } catch (SQLException e) {
-                    throw new SqlError(n, "Problem finding the number of rows:\n" + e.getMessage());
+                    throw new SqlFailure(n, "Problem finding the number of rows:\n" + e.getMessage());
                 }
             } else {
-                throw new SemanticError(n, "Unsupported dot expression: " + rightOperator);
+                throw new SemanticFailure(n, "Unsupported dot expression: " + rightOperator);
             }
         } else {
-            throw new SemanticError(n, "Illegal type in dot expression: " + getType(leftValue));
+            throw new SemanticFailure(n, "Illegal type in dot expression: " + getType(leftValue));
         }
     }
 
@@ -844,7 +844,7 @@ public class Interpreter {
                 case "string_content":
                     return interpretStringContent(c, level + 1);
                 default:
-                    throw new AstError(n);
+                    throw new AstFailure(n);
             }
         }).collect(Collectors.joining());
     }
@@ -874,7 +874,7 @@ public class Interpreter {
         } else {
             String message = "The interpolation expression must be a string"
                     + (parameterArg == null  ? " or an integer." : ", an integer or a parameter.");
-            throw new SemanticError(n, message);
+            throw new SemanticFailure(n, message);
         }
     }
 
@@ -885,7 +885,7 @@ public class Interpreter {
                 if (c.getType().equals("key_value_pair")) {
                     interpretKeyValuePair(c, level + 1, keyValuePairs, ctx);
                 } else {
-                    throw new AstError(n);
+                    throw new AstFailure(n);
                 }
             });
         }
@@ -973,7 +973,7 @@ public class Interpreter {
                     break;
                 case "interpolation2":
                     if (argumentConsumer == null) {
-                        throw new SemanticError(c, "Safe interpolation ($$) cannot be used here.");
+                        throw new SemanticFailure(c, "Safe interpolation ($$) cannot be used here.");
                     }
                     interpretInterpolation(c, level + 1, ctx,
                             argumentConsumer::accept,
@@ -981,7 +981,7 @@ public class Interpreter {
                             argumentConsumer::accept);
                     break;
                 default:
-                    throw new AstError(c);
+                    throw new AstFailure(c);
             }
         }
     }
