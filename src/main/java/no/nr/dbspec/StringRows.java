@@ -1,16 +1,23 @@
 package no.nr.dbspec;
 
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.regex.Pattern;
 
 public class StringRows implements Rows {
 
-    private final String[] rows;
+    private static final Pattern tabPattern = Pattern.compile("\t");
+
+    private final String[][] rows;
     int pos = -1;
 
     public StringRows(String str) {
-        this.rows = Utils.lines(str);
+        String[] lines = Utils.lines(str);
+        this.rows = Arrays.stream(lines)
+                .map(line -> tabPattern.split(line, -1))
+                .toArray(String[][]::new);
     }
-    
+
     @Override
     public int getSize() {
         return rows.length;
@@ -32,6 +39,6 @@ public class StringRows implements Rows {
 
     @Override
     public String[] next() throws SQLException {
-        return pos < rows.length ? new String[]{rows[pos++]} : null;
+        return pos < rows.length ? rows[pos++] : null;
     }
 }

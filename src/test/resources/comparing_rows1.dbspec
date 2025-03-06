@@ -39,3 +39,28 @@ Set e3:
 	cc cc cc
 
 Assert r3 == e3
+
+
+### NB. The numbers below are all read as strings.
+
+Set u:
+	a	1
+	b	2
+	c	3
+
+Set v = result via conn:
+	SELECT *
+	FROM (
+		VALUES
+			('a', 1),
+			('b', 2),
+			('c', 3)
+	) AS tab
+
+For (x, y) in u:
+	Log "${x} -> ${y}"
+
+For (x, y) in v:
+	Log "${x} -> ${y}"
+
+Assert u == v
