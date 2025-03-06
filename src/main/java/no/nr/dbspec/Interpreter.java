@@ -6,14 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -137,6 +130,9 @@ public class Interpreter {
         } catch (AssertionFailure e) {
             log.error("Assertion failed");
             logNodeLines(e.node);
+            for (Map.Entry<String, String> me : assertionCtx(e.node, e.context).entrySet()) {
+                log.error("\t" + me.getKey() + "\t=\t" + me.getValue());
+            }
             log.maybePrintStackTrace(e);
             return StatusCode.ASSERTION_FAILURE;
         } catch (AstFailure e) {
@@ -225,11 +221,17 @@ public class Interpreter {
         }
     }
 
+    // For printing if an assertion fails.
+    private Map<String, String> assertionCtx(TSNode n, Context ctx) {
+        return comparisonCtx(n.getNamedChild(0), ctx);
+    }
+
     void interpretAssert(TSNode n, int level, Context ctx) {
-        boolean comparisonValue = interpretComparison(n.getNamedChild(0), level, ctx);
+        TSNode cn = n.getNamedChild(0);
+        boolean comparisonValue = interpretComparison(cn, level, ctx);
         log.debugIndented(level, "* Assertion: '%s'", comparisonValue);
         if (!comparisonValue) {
-            throw new AssertionFailure(n);
+            throw new AssertionFailure(n, ctx);
         }
     }
 
@@ -669,6 +671,17 @@ public class Interpreter {
         });
     }
 
+    // For printing if a comparison fails.
+    Map<String, String> comparisonCtx(TSNode n, Context ctx) {
+        return Stream.of("left", "right")
+                .map(n::getChildByFieldName)
+                .flatMap(this::basicExpressionVariableInstances)
+                .distinct()
+                .collect(Collectors.toMap(
+                        var -> var,
+                        var -> Utils.escape(ctx.getValue(var), true)));
+    }
+
     Boolean interpretComparison(TSNode n, int level, Context ctx) {
         TSNode left = n.getChildByFieldName("left");
         Object leftValue = interpretBasicExpression(left, level + 1, ctx);
@@ -771,6 +784,18 @@ public class Interpreter {
             return new StringRows((String) obj);
         }
         throw new AstFailure(n);
+    }
+
+    // For printing if an assertion fails.
+    private Stream<String> basicExpressionVariableInstances(TSNode n) {
+        switch (n.getType()) {
+            case "variable_instance":
+                return Stream.of(interpretIdentifier(n.getNamedChild(0), -1));
+            case "dot_expression":
+                return basicExpressionVariableInstances(n.getChildByFieldName("left"));
+            default:
+                return Stream.empty();
+        }
     }
 
     Object interpretBasicExpression(TSNode n, int level, Context ctx) {

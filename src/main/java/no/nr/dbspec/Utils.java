@@ -3,6 +3,7 @@ package no.nr.dbspec;
 import org.treesitter.TSNode;
 
 import java.math.BigInteger;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -49,8 +50,14 @@ public class Utils {
                         .replace("\f", "\\f");
             }
             return "\"" + x + "\"";
+        } else if (obj instanceof Rows) {
+            try {
+                return "[" + ((Rows) obj).getSize() + " rows]";
+            } catch (SQLException e) {
+                return "[?]";
+            }
         }
-        return obj == null ? null : obj.toString();
+        return obj == null ? "null" : obj.toString();
     }
 
     public static String getType(Object obj) {
