@@ -1,0 +1,22 @@
+# Expected exit status code: OK
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Set r1 = result via conn:
+	SELECT *
+	FROM (VALUES ' foo ') AS tab
+
+Assert r1.stripped == "foo"
+
+Set r1 = result via conn:
+	SELECT *
+	FROM (VALUES '13') AS tab
+
+Assert r1.as_integer == 13

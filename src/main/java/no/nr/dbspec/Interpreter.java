@@ -614,7 +614,7 @@ public class Interpreter {
         int expectedCols = variablesStrings.size();
         try {
             if (!rs.tryLockAndRewind()) {
-                throw new SemanticFailure(n, "Nested iteration over the same rows is not allowed.");
+                throw new SemanticFailure(n, "Nested iteration over the same row set is not allowed.");
             }
             String[] row;
             while ((row = rs.next()) != null) {
@@ -829,12 +829,16 @@ public class Interpreter {
         TSNode right = n.getChildByFieldName("right");
         String rightOperator = interpretDotOperator(right, level + 1);
         log.debugIndented(level, "* Dot expression: value = '%s'.'%s'", leftValue, rightOperator);
+        return dotExpressionValue(n, leftValue, rightOperator);
+    }
+
+    private static Object dotExpressionValue(TSNode n, Object leftValue, String rightOperator) {
         if (leftValue instanceof String) {
             if (rightOperator.equals("stripped")) {
-                return ((String)leftValue).trim();
+                return ((String) leftValue).trim();
             } else if (rightOperator.equals("as_integer")) {
                 try {
-                    return new BigInteger((String)leftValue);
+                    return new BigInteger((String) leftValue);
                 } catch (NumberFormatException e) {
                     throw new SemanticFailure(n, "Not an integer: '" + leftValue + "'");
                 }
@@ -842,15 +846,36 @@ public class Interpreter {
                 throw new SemanticFailure(n, "Unsupported dot expression: " + rightOperator);
             }
         } else if (leftValue instanceof Rows) {
-            if (rightOperator.equals("size")) {
-                Rows rs = (Rows)leftValue;
-                try {
-                    return BigInteger.valueOf(rs.getSize());
-                } catch (SQLException e) {
-                    throw new SqlFailure(n, "Problem finding the number of rows:\n" + e.getMessage());
-                }
-            } else {
-                throw new SemanticFailure(n, "Unsupported dot expression: " + rightOperator);
+            Rows rs = (Rows) leftValue;
+            switch (rightOperator) {
+                case "size":
+                    try {
+                        return BigInteger.valueOf(rs.getSize());
+                    } catch (SQLException e) {
+                        throw new SqlFailure(n, "Problem finding the number of rows:\n" + e.getMessage());
+                    }
+                case "as_integer":
+                case "stripped":
+                    try {
+                        if (!rs.tryLockAndRewind()) {
+                            throw new SemanticFailure(n, "Nested iteration over the same row set is not allowed.");
+                        }
+                        String[] row = rs.next();
+                        if (row == null) {
+                            throw new SemanticFailure(n, "." + rightOperator + " applied to empty result set.");
+                        }
+                        if (rs.next() != null) {
+                            throw new SemanticFailure(n, "." + rightOperator + " applied to result set with more than one row.");
+                        }
+                        if (row.length != 1) {
+                            throw new SemanticFailure(n, "." + rightOperator + " applied to result set with " + row.length + " columns.");
+                        }
+                        return dotExpressionValue(n, row[0], rightOperator);
+                    } catch (SQLException e) {
+                        throw new SqlFailure(n, e.getMessage());
+                    }
+                default:
+                    throw new SemanticFailure(n, "Unsupported dot expression: " + rightOperator);
             }
         } else {
             throw new SemanticFailure(n, "Illegal type in dot expression: " + getType(leftValue));
