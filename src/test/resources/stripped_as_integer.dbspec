@@ -5,3 +5,4 @@ Set x:
 	7
 
 Assert 74 == "   ${x}4   ".stripped.as_integer
+Assert 74 == "   ${x}4   ".as_integer

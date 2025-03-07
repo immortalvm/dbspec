@@ -834,11 +834,12 @@ public class Interpreter {
 
     private static Object dotExpressionValue(TSNode n, Object leftValue, String rightOperator) {
         if (leftValue instanceof String) {
+            String trimmed = ((String) leftValue).trim();
             if (rightOperator.equals("stripped")) {
-                return ((String) leftValue).trim();
+                return trimmed;
             } else if (rightOperator.equals("as_integer")) {
                 try {
-                    return new BigInteger((String) leftValue);
+                    return new BigInteger(trimmed);
                 } catch (NumberFormatException e) {
                     throw new SemanticFailure(n, "Not an integer: '" + leftValue + "'");
                 }
