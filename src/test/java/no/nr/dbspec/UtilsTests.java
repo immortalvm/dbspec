@@ -8,7 +8,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class UtilsTests {
 
     @Test
-    void test_lines() throws Exception {
+    void test_lines() {
+        assertArrayEquals(new String[]{""}, lines("")); // NB
         assertArrayEquals(new String[]{"abc"}, lines("abc"));
         assertArrayEquals(new String[]{"abc"}, lines("abc\n"));
         assertArrayEquals(new String[]{"abc", "def"}, lines("abc\ndef"));
