@@ -138,6 +138,8 @@ Metadata for dbc:
 	# 	COMMENT ON DATABASE adventure0 IS 'This is the AdventureWorkds PostgreSQL database';
 
 	Schema person:
+		description:
+			This is the schema for person specific information.
 		Table person:
 			Column businessentityid - Primary key for person records.
 			Column persontype:
