@@ -52,7 +52,7 @@ public class Log {
         unpack(args);
         System.err.println(
                 Utils.prefixAndFixLineSeparators(
-                        prefix,
+                        Utils.getCurrentTimeString() + prefix,
                         String.format(message, args)));
     }
 

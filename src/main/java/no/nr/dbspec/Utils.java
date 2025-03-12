@@ -4,12 +4,20 @@ import org.treesitter.TSNode;
 
 import java.math.BigInteger;
 import java.sql.SQLException;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Utils {
+
+    private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+    public static String getCurrentTimeString() {
+        return "[" + LocalTime.now().format(timeFormatter) + "] ";
+    }
 
     // Cf. String.lines() and newline below.
     public static String stripFinalNewline(String str) {

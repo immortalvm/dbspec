@@ -120,13 +120,15 @@ public class InterpreterTests {
             ByteArrayOutputStream outContent = new ByteArrayOutputStream();
             System.setOut(new PrintStream(outContent, true));
             test_dbspec_files(logTestFilename);
-            String[] lines = outContent.toString().lines().toArray(String[]::new);
-            int i = 0;
-            assertEquals("This is logged", lines[i++]);
-            assertEquals("17", lines[i++]);
-            assertEquals("Multiline log message", lines[i++]);
-            assertEquals("\twith tabs and interpolation: 9", lines[i++]);
-            assertEquals(i, lines.length);
+            String timeReg = "\\[[0-2][0-9]:[0-5][0-9]\\] ";
+            assertLinesMatch(
+                    Stream.of(
+                            "This is logged",
+                            "17",
+                            "Multiline log message",
+                            "\twith tabs and interpolation: 9")
+                        .map(line -> timeReg + line + "$"),
+                    outContent.toString().lines());
         } finally {
             System.setOut(originalOut);
         }

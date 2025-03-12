@@ -197,7 +197,7 @@ public class Interpreter {
         ensureInstance(n, "A log message ", message, String.class, BigInteger.class);
         log.debugIndented(level, "* Log message: '%s'", message);
         if (log.getLevel() > Log.QUIET) {
-            System.out.println(Utils.prefixAndFixLineSeparators("", "" + message));
+            System.out.println(Utils.prefixAndFixLineSeparators(getCurrentTimeString(), "" + message));
         }
     }
 
