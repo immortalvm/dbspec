@@ -5,35 +5,41 @@ import org.treesitter.TSNode;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Utils {
 
-    public static final Pattern newline = Pattern.compile("\r?\n");
-
+    // Cf. String.lines() and newline below.
     public static String stripFinalNewline(String str) {
         // There might be more elegant ways to do this...
+        if (str.isEmpty()) {
+            return str;
+        }
         int n = str.length();
-        return n < 1 || str.charAt(n - 1) != '\n' ? str
+        return str.charAt(n - 1) == '\r' ? str.substring(0, n - 1)
+                : str.charAt(n - 1) != '\n' ? str
                 : n < 2 || str.charAt(n - 2) != '\r' ? str.substring(0, n - 1)
                 : str.substring(0, n - 2);
     }
 
-    /**
-     * The last line may or may not end with \r?\n,
-     * i.e. at most one trailing empty line is skipped.
-     * See the unit test for details.
-     */
-    public static String[] lines(String str) {
-        // -1: Include trailing empty strings, also after final newline/CRLF.
-        return newline.split(stripFinalNewline(str), -1);
-    }
-
     public static String prefixAndFixLineSeparators(String prefix, String str) {
-        return Arrays.stream(newline.split(str, -1))
+        return (str + "\r\n").lines()
                 .map(x -> prefix + x)
                 .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    // Unlike String.lines(), a single \r does not end the line.
+    private static final Pattern tsNewline = Pattern.compile("\r?\n");
+
+    public static String[] tsLines(String str) {
+        // -1: Include trailing empty strings, also after final newline/CR+LF.
+        return tsNewline.split(str, -1);
+    }
+
+    public static String[] tsLineEndings(String str) {
+        return tsNewline.matcher(str).results().map(MatchResult::group).toArray(String[]::new);
     }
 
     public static String escape(Object obj, boolean properly){

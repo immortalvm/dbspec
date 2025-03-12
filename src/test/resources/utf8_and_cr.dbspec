@@ -1,0 +1,31 @@
+# Expected exit status code: OK
+#
+# In DbSpec lines are terminated with \r\n, \n or \r
+# Hence the, "random" carriage return characters in this file.
+#
+# Observe that the line endings are passed "as is" to scripts,
+# but that they are normalized by calls to Log.
+
+Set x = 1
+
+# æøå
+
+Assert x != 2
+
+Set y:
+	a
+	b
+	c
+
+Set z:
+	a
+	b
+	c
+
+Assert y != z
+
+Set w:
+	a
+	b
+	c# This is legal, but not recommended
+Assert w == z

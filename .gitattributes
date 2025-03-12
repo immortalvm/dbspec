@@ -2,6 +2,9 @@
 # MS Windows becomes a mess.
 * text eol=lf
 
+# Since some unit test files mix line-endings on purpose.
+*.dbspec -text
+
 *.so binary
 *.jar binary
 *.docx binary

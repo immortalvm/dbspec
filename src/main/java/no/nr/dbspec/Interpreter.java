@@ -20,10 +20,10 @@ import no.nr.dbspec.RoaeMd.RoaeMdType;
 import no.nr.dbspec.SiardMd.SiardMdType;
 import org.treesitter.TSNode;
 import org.treesitter.TSParser;
+import org.treesitter.TSPoint;
 import org.treesitter.TSTree;
 
-import static no.nr.dbspec.Utils.getType;
-import static no.nr.dbspec.Utils.ensureInstance;
+import static no.nr.dbspec.Utils.*;
 
 @SuppressWarnings("SameParameterValue")
 public class Interpreter {
@@ -39,7 +39,8 @@ public class Interpreter {
     private final SiardMetadataAdjuster siardMetadataAdjuster;
     private final RoaeProducer roaeProducer;
 
-    private String source;
+    private String[] sourceLines;
+    private String[] lineEndings;
     private TSTree tree;
 
     public Interpreter(
@@ -65,50 +66,31 @@ public class Interpreter {
     }
 
     void logNodeLines(TSNode n) {
-        int start = n.getStartByte();
-        while (start > 0 && source.charAt(start - 1) != '\n') {
-            start--;
+        int end = n.getEndPoint().getRow();
+        for (int i = n.getStartPoint().getRow(); i <= end; i++) {
+            log.error("%d:\t%s", i, sourceLines[i].stripTrailing());
         }
-        int end = n.getEndByte();
-        int len = source.length();
-        while (start < end && source.charAt(end - 1) == '\n') {
-            end--;
-        }
-        while (end < len && source.charAt(end) != '\n') {
-            end++;
-        }
-        int line = 0;
-        int pos = -1;
-        do {
-            line++;
-            pos = source.indexOf('\n', pos + 1);
-        } while (pos < start && pos != -1);
-        do {
-            if (pos == -1 || pos > end) {
-                pos = end;
-            }
-            log.error("%d:\t%s", line++, source.substring(start, pos));
-            start = pos + 1;
-            pos = source.indexOf('\n', start);
-        } while (start < end);
     }
 
     public StatusCode interpret(Path file) {
         log.verbose("Parsing %s.", file);
+        String sourceString;
         try {
-            source = Files.readString(file);
+            sourceString = Files.readString(file);
         } catch (IOException e) {
             log.error("The file could not be read: %s\n%s", file, e.getMessage());
             return StatusCode.SPEC_UNREADABLE;
         }
-        log.debug("--- Input ---\n%s-------------", source);
+        log.debug("--- Input ---\n%s-------------", sourceString);
         TSParser parser = new TSParser();
         parser.setLanguage(new TreeSitterDbspec());
-        tree = parser.parseString(null, source);
+        tree = parser.parseString(null, sourceString);
         log.debug("AST: %s\n", (Supplier<String>) () -> tree.getRootNode().toString());
 
         log.verbose("Starting execution.");
         try {
+            sourceLines = tsLines(sourceString);
+            lineEndings = Utils.tsLineEndings(sourceString);
             TSNode n = tree.getRootNode();
             interpretSourceFile(n, 0, context);
             return StatusCode.OK;
@@ -185,9 +167,7 @@ public class Interpreter {
     }
 
     void interpretStatement(TSNode n, int level, NormalContext ctx) {
-        if (n.getType().equals("nop")) {
-            // NOP
-        } else if (n.getType().equals("set")) {
+        if (n.getType().equals("set")) {
             interpretSet(n, level + 1, ctx);
         } else if (n.getType().equals("execute_using")) {
             interpretExecuteUsing(n, level + 1, ctx);
@@ -200,7 +180,7 @@ public class Interpreter {
         } else if (n.getType().equals("for_loop")) {
             interpretForLoop(n, level + 1, ctx);
         } else if (n.getType().equals("set_inter")) {
-            // NOP
+            // Setting the interpolation symbol is handled by the lexer.
         } else if (n.getType().equals("log")) {
             interpretLog(n, level + 1, ctx);
         } else if (n.getType().equals("assert")) {
@@ -249,7 +229,7 @@ public class Interpreter {
     }
 
     Object interpretExpression(TSNode n, int level, Context ctx) {
-        Object expressionValue = null;
+        Object expressionValue;
         if (n.getType().equals("connection")) {
             expressionValue = interpretConnection(n, level + 1, ctx);
         } else if (n.getType().equals("query")) {
@@ -638,7 +618,7 @@ public class Interpreter {
     }
 
     List<String> interpretForVariables(TSNode n, int level) {
-        List<String> variables = new ArrayList<String>();
+        List<String> variables = new ArrayList<>();
         getChildren(n).forEach((TSNode c) -> {
             if (c.getType().equals("identifier")) {
                 variables.add(interpretIdentifier(c, level + 1));
@@ -666,9 +646,7 @@ public class Interpreter {
 
     void interpretStatementBlock(TSNode n, int level, NormalContext ctx) {
         log.debugIndented(level, "* Statement block");
-        getChildren(n).forEach((TSNode c) -> {
-            interpretStatement(c, level, ctx);
-        });
+        getChildren(n).forEach((TSNode c) -> interpretStatement(c, level, ctx));
     }
 
     // For printing if a comparison fails.
@@ -947,12 +925,9 @@ public class Interpreter {
         TSNode key = n.getChildByFieldName("key");
         String keyString = interpretIdentifier(key, level + 1);
         TSNode value = n.getChildByFieldName("value");
-        Object valueString = null;
-        if (value.getType().equals("raw")) {
-            valueString = interpretRaw(value, level, ctx);
-        } else {
-            valueString = interpretBasicExpression(value, level, ctx);
-        }
+        Object valueString = value.getType().equals("raw")
+                ? interpretRaw(value, level, ctx)
+                : interpretBasicExpression(value, level, ctx);
         ensureInstance(n, "The " + keyString + " value", valueString, String.class);
         keyValuePairs.setValue(keyString, valueString);
     }
@@ -992,11 +967,8 @@ public class Interpreter {
                 // non-indented empty lines.
                 int len = rc.length();
                 int end = len;
-                while (end > 0 && rc.charAt(end - 1) == '\n') {
+                while (end > 0 && (rc.charAt(end - 1) == '\n' || rc.charAt(end - 1) == '\r')) {
                     end--;
-                    if (end > 0 && rc.charAt(end - 1) == '\r') {
-                        end--;
-                    }
                 }
                 if (end == 0) {
                     pending.append(rc);
@@ -1041,42 +1013,59 @@ public class Interpreter {
 
     @SuppressWarnings("unused")
     String interpretIdentifier(TSNode n, int level) {
-        return source.substring(n.getStartByte(), n.getEndByte());
+        return nodeString(n);
     }
 
     @SuppressWarnings("unused")
     String interpretShortDescription(TSNode n, int level) {
-        return source.substring(n.getStartByte(), n.getEndByte());
+        return nodeString(n);
     }
 
     @SuppressWarnings("unused")
     String interpretEscapeSequence(TSNode n, int level) {
-        return StringEscapeUtils.unescapeJava(source.substring(n.getStartByte(), n.getEndByte()));
+        return StringEscapeUtils.unescapeJava(nodeString(n));
     }
 
     @SuppressWarnings("unused")
     String interpretStringContent(TSNode n, int level) {
-        return source.substring(n.getStartByte(), n.getEndByte());
+        return nodeString(n);
     }
 
     @SuppressWarnings("unused")
     String interpretRawContent(TSNode n, int level) {
-        return source.substring(n.getStartByte(), n.getEndByte());
+        return nodeString(n);
     }
 
     @SuppressWarnings("unused")
     String interpretComparisonOperator(TSNode n, int level) {
-        return source.substring(n.getStartByte(), n.getEndByte());
+        return nodeString(n);
     }
 
     @SuppressWarnings("unused")
     String interpretDotOperator(TSNode n, int level) {
-        return source.substring(n.getStartByte(), n.getEndByte());
+        return nodeString(n);
     }
 
     @SuppressWarnings("unused")
     BigInteger interpretInteger(TSNode n, int level) {
-        String content = source.substring(n.getStartByte(), n.getEndByte());
-        return new BigInteger(content);
+        return new BigInteger(nodeString(n));
+    }
+
+    private String nodeString(TSNode n) {
+        TSPoint sp = n.getStartPoint();
+        TSPoint ep = n.getEndPoint();
+        if (sp.getRow() == ep.getRow()) {
+            return sourceLines[sp.getRow()].substring(sp.getColumn(), n.getEndPoint().getColumn());
+        }
+        StringBuilder sb = new StringBuilder();
+        int i = sp.getRow();
+        sb.append(sourceLines[i], sp.getColumn(), sourceLines[i].length());
+        sb.append(lineEndings[i++]);
+        while (i < ep.getRow()) {
+            sb.append(sourceLines[i]);
+            sb.append(lineEndings[i++]);
+        }
+        sb.append(sourceLines[i], 0, ep.getColumn());
+        return sb.toString();
     }
 }

@@ -120,7 +120,7 @@ public class InterpreterTests {
             ByteArrayOutputStream outContent = new ByteArrayOutputStream();
             System.setOut(new PrintStream(outContent, true));
             test_dbspec_files(logTestFilename);
-            String[] lines = Utils.lines(outContent.toString());
+            String[] lines = outContent.toString().lines().toArray(String[]::new);
             int i = 0;
             assertEquals("This is logged", lines[i++]);
             assertEquals("17", lines[i++]);

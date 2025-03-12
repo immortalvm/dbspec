@@ -12,8 +12,7 @@ public class StringRows implements Rows {
     int pos = -1;
 
     public StringRows(String str) {
-        String[] lines = Utils.lines(str);
-        this.rows = Arrays.stream(lines)
+        this.rows = str.lines()
                 .map(line -> tabPattern.split(line, -1))
                 .toArray(String[][]::new);
     }
