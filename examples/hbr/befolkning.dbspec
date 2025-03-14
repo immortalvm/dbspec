@@ -1,0 +1,636 @@
+#!/usr/bin/env dbspec
+
+Parameters:
+	dump_tgz - Path to the HBR database dump
+	host - Hostname of MariaDB instance used for the staging database
+	port - Port of MariaDB instance
+	user - Database user (must be able to create the staging database)
+	password - Database password (cannot contain quotes)
+
+Set dump_dir = "/tmp/befolkning_dump"
+
+####
+
+Log "Extracting database dump to '${dump_dir}'..."
+
+Set extraction_msg = result using "/usr/bin/env bash":
+	set -e
+	if [ -d '${dump_dir}' ]; then
+	  echo "Directory exists. Deleting all contents..."
+	  rm -rf '${dump_dir}'/*
+	else
+	  echo "Directory does not exist. Creating directory..."
+	  mkdir '${dump_dir}'
+	fi
+	tar -xzf '${dump_tgz}' -C '${dump_dir}'
+	echo "Database dump extracted to '${dump_dir}'."
+
+Log extraction_msg
+
+####
+
+Log "Verify that the dump directory contains one and only one ohbr backup..."
+
+Set num_backups = result using "/usr/bin/env bash":
+	set -e
+	find '${dump_dir}' -maxdepth 1 -name "ohbr_*.sql" -type f | wc -l
+
+Assert num_backups.as_integer == 1
+
+####
+
+Log "Restoring to staging database..."
+
+# TODO: Use options file for password for security.
+Set restore_msg = result using "/usr/bin/env bash":
+	mariadb -h ${host} -P ${port} -u ${user} -p${password} < "${dump_dir}"/ohbr_*.sql
+
+Log restore_msg
+
+####
+
+Set db = "ohbr"
+
+Log "Establishing connection to staging database '${db}'..."
+
+# TODO: DbSpec should also include the JDBC driver for MariaDB.
+Set conn = connection to "jdbc:mysql://${host}:${port}/${db}" with:
+	user = "${user}"
+	password = "${password}"
+
+####
+
+Log "Deleting tables with names starting with 'deleted_'..."
+
+Execute via conn:
+	DROP TABLE IF EXISTS
+		${db}.deleted_family_links,
+		${db}.deleted_links,
+		${db}.deleted_persons
+
+Set table_sizes = result via conn:
+	SELECT t.TABLE_NAME, t.TABLE_ROWS
+	FROM information_schema.TABLES t
+	WHERE t.TABLE_SCHEMA = $${db}
+	AND t.TABLE_NAME LIKE 'deleted\_%'
+
+# NB. information_schema.TABLES.TABLE_ROWS is only an estimate.
+
+For (table, rows) in table_sizes:
+	Log "  Unexpected table: ${table} (~ ${rows} rows)"
+
+Assert table_sizes.size == 0
+
+####
+
+Log "Dropping empty tables..."
+
+Set presumed_empty:
+	altered_names
+	changed_name
+	family_relations
+	mako_migrations
+	person_places
+	statistics
+
+Set tables = result via conn:
+	SELECT
+		t.TABLE_NAME,
+		0 < find_in_set(t.TABLE_NAME, replace($${presumed_empty}, '\n', ',')) AS pe
+	FROM information_schema.TABLES t
+	WHERE t.TABLE_SCHEMA = $${db}
+	ORDER BY t.TABLE_NAME
+
+For (table, pe) in tables:
+	Log "  Checking ${table}..."
+	Set empty = result via conn:
+		SELECT NOT EXISTS (SELECT 1 FROM ${db}.${table})
+	Assert empty == pe
+	If empty.as_integer == 1:
+		Execute via conn:
+			DROP TABLE ${db}.${table}
+		Log "    Dropped"
+
+####
+
+Log "Drop other uninteresting tables..."
+
+# The first two tables only contain examples, whereas family_links_church
+# is still work in progress.
+Execute via conn:
+	DROP TABLE IF EXISTS
+		${db}.celebrities,
+		${db}.examples,
+		${db}.family_links_church
+
+####
+
+Log "Updating default collation..."
+
+# Will this be reflected in the .siard?
+Execute via conn:
+	ALTER DATABASE ${db}
+	COLLATE = 'utf8mb4_danish_ci';
+
+# The target table does not exist, but it will be recreated below.
+Execute via conn:
+	ALTER TABLE ${db}.ref_fylker
+	DROP CONSTRAINT fk_ref_fylker_ref_regioner1
+
+# Drop before collation changes, recreated below.
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle
+	DROP CONSTRAINT fk_ref_kommuneenheter_alle_ref_fylker1
+
+Set tables = result via conn:
+	SELECT t.TABLE_NAME
+	FROM information_schema.TABLES t
+	WHERE t.TABLE_SCHEMA = $${db}
+	ORDER BY t.TABLE_NAME
+
+For (table) in tables:
+	Log "  ${table}"
+	Execute via conn:
+		ALTER TABLE ${db}.${table}
+		CONVERT TO CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_danish_ci'
+
+####
+
+Log "Cleaning up geographic entities..."
+
+Execute via conn:
+	CREATE TABLE ${db}.ref_regioner
+	(
+		id int(11) NOT NULL,
+		navn varchar(50) NOT NULL,
+		PRIMARY KEY (id)
+	)
+
+Execute via conn:
+	INSERT INTO ${db}.ref_regioner
+	VALUES
+	(0, 'Hele Norge'),
+	(1, 'Østlandet'),
+	(2, 'Sørlandet'),
+	(3, 'Vestlandet'),
+	(4, 'Midt-Norge'),
+	(5, 'Nord-Norge'),
+	(6, 'Svalbard m.m.'),
+	(7, 'Amerika'),
+	(8, 'Norden'),
+	(9, 'Resten av verden')
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_fylker
+	ADD CONSTRAINT fk_ref_fylker_ref_regioner1
+	FOREIGN KEY (regionid)
+	REFERENCES ${db}.ref_regioner(id)
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle
+	ADD CONSTRAINT fk_ref_kommuneenheter_alle_ref_fylker1
+	FOREIGN KEY (fylkesnr)
+	REFERENCES ${db}.ref_fylker(fylkesnr)
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle
+	DROP INDEX idx_kommnr_aar
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle
+	DROP COLUMN id
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle
+	ADD PRIMARY KEY (kommnr, startaar)
+
+Execute via conn:
+	CREATE TABLE ${db}.kommunenummer AS
+	SELECT DISTINCT kommnr
+	FROM ${db}.ref_kommuneenheter_alle
+
+Execute via conn:
+	ALTER TABLE ${db}.kommunenummer
+	ADD PRIMARY KEY (kommnr)
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle
+	ADD CONSTRAINT fk_ref_kommuneenheter_alle_kommunenummer
+	FOREIGN KEY (kommnr) REFERENCES ${db}.kommunenummer(kommnr)
+
+####
+
+Log "Cleaning up and renaming the person_links table..."
+
+Execute via conn:
+	RENAME TABLE ${db}.person_links TO ${db}.personforekomst
+
+# Change primary key
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP COLUMN autoid
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst ADD PRIMARY KEY (pfid)
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP INDEX idx_person_links_pfid
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP INDEX pfid
+# (These indices are now redundant)
+
+# Drop uninteresting columns
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP COLUMN person_autoid
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP COLUMN person_entry_autoid
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP COLUMN user_id
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP COLUMN justification
+
+Set rubbish_pfid = result via conn:
+	SELECT pfid
+	FROM ${db}.personforekomst
+	WHERE LENGTH(pfid) < 8
+
+For (pfid) in rubbish_pfid:
+	Log "Dropping 'personforekomst' with pfid='${pfid}'"
+	Execute via conn:
+		DELETE FROM ${db}.personforekomst
+		WHERE pfid = $${pfid}
+
+Execute via conn:
+	CREATE TABLE ${db}.personforekomst_kommune
+	(
+		pfid VARCHAR(30) NOT NULL,
+		kommnr CHAR(4) NOT NULL
+	) AS
+	WITH RECURSIVE
+	cte(pfid, rem) AS
+	(
+		SELECT pfid, municipality
+		FROM ${db}.personforekomst
+		WHERE municipality IS NOT NULL
+	UNION ALL
+		SELECT pfid, SUBSTRING(rem, LOCATE(' ', rem) + 1)
+		FROM cte
+		WHERE rem LIKE '% %'
+	),
+	sub(pfid, kommnr) AS
+	(
+		SELECT pfid, SUBSTRING_INDEX(rem, ' ', 1) AS kommnr
+		FROM cte
+	)
+	SELECT DISTINCT pfid, CAST(kommnr AS VARCHAR(4))
+	FROM sub
+	WHERE LENGTH(kommnr) = 4
+
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst_kommune
+	ADD PRIMARY KEY (pfid, kommnr)
+
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst DROP COLUMN municipality
+
+Set unknown_kommnr = result via conn:
+	SELECT COUNT(DISTINCT kommnr)
+	FROM ${db}.personforekomst_kommune
+	WHERE kommnr NOT IN (SELECT kommnr FROM ${db}.ref_kommuneenheter_alle)
+
+Set unknown_kommnr = unknown_kommnr.as_integer
+
+If unknown_kommnr > 0:
+	Log "Beware: Skipping references to ${unknown_kommnr} unknown 'kommnr'..."
+	Execute via conn:
+		DELETE FROM ${db}.personforekomst_kommune
+		WHERE kommnr NOT IN (SELECT kommnr FROM ${db}.ref_kommuneenheter_alle)
+
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst_kommune
+	ADD CONSTRAINT fk_personforekomst_kommune_personforekomst
+	FOREIGN KEY (pfid)
+	REFERENCES ${db}.personforekomst(pfid)
+
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst_kommune
+	ADD CONSTRAINT fk_personforekomst_kommune_kommunenummer
+	FOREIGN KEY (kommnr)
+	REFERENCES ${db}.kommunenummer(kommnr)
+
+####
+
+Log "Cleaning up the person table..."
+
+# This could be simplified in MariaDB 11.6 and later.
+Execute via conn:
+	DELETE FROM ${db}.person
+	WHERE autoid IN
+	(
+		SELECT p1.autoid
+		FROM ${db}.person p1
+		WHERE EXISTS (
+			SELECT 1
+			FROM ${db}.person p2
+			WHERE p1.personid = p2.personid
+			AND (p2.created, p2.autoid) > (p1.created, p1.autoid)
+		)
+	)
+
+Execute via conn:
+	ALTER TABLE ${db}.person DROP COLUMN autoid
+Execute via conn:
+	ALTER TABLE ${db}.person RENAME COLUMN personid TO pid
+Execute via conn:
+	ALTER TABLE ${db}.person ADD PRIMARY KEY (pid)
+Execute via conn:
+	ALTER TABLE ${db}.person DROP INDEX idx_person_id
+# (This index is now redundant)
+
+Log "  Removing unused columns..."
+
+Set mother_or_father_id = result via conn:
+	SELECT pid
+	FROM ${db}.person p
+	WHERE p.mother_id IS NOT NULL
+	   OR p.father_id IS NOT NULL
+
+Assert mother_or_father_id.size == 0
+
+Execute via conn:
+	ALTER TABLE ${db}.person DROP COLUMN mother_id
+
+Execute via conn:
+	ALTER TABLE ${db}.person DROP COLUMN father_id
+
+Log "  Updating personforekomst.pid if necessary..."
+
+Execute via conn:
+	UPDATE personforekomst pf
+	INNER JOIN (
+		WITH RECURSIVE cte(pfid, pid, `found`) AS
+		(
+			SELECT p.pfid, p.pid, 0
+			FROM ${db}.personforekomst p
+			WHERE p.pid NOT IN (SELECT pid FROM ${db}.person)
+		UNION ALL
+			SELECT c.pfid, p.pid, CASE WHEN p.pid IN (SELECT pid FROM ${db}.person) THEN 1 ELSE 0 END
+			FROM cte c
+			INNER JOIN ${db}.personforekomst p ON p.pfid = c.pid
+			WHERE c.`found` = 0
+		)
+		SELECT pfid, pid
+		FROM cte
+		WHERE found = 1
+	) upd ON upd.pfid = pf.pfid
+	SET pf.pid = upd.pid
+
+Execute via conn:
+	UPDATE ${db}.personforekomst pf
+	INNER JOIN (
+		WITH RECURSIVE
+		step AS
+		(
+			SELECT
+				CASE WHEN p.created <= p2.created THEN p.pid ELSE p2.pid END AS a,
+				CASE WHEN p.created <= p2.created THEN p2.pid ELSE p.pid END AS b
+			FROM ${db}.person p
+			INNER JOIN ${db}.personforekomst pf ON pf.pfid = p.pid
+			INNER JOIN ${db}.person p2 ON p2.pid = pf.pid
+			WHERE pf.pid != p.pid
+		),
+		cte AS
+		(
+			SELECT *
+			FROM step
+		UNION ALL
+			SELECT c.a, s.b
+			FROM cte c
+			INNER JOIN step s ON c.b = s.a
+		)
+		SELECT *
+		FROM cte
+		WHERE b NOT IN (SELECT a FROM cte)
+	) upd ON upd.a = pf.pid
+	SET pf.pid = upd.b
+
+Set person_still_missing = result via conn:
+	SELECT p.pfid, p.pid
+	FROM ${db}.personforekomst p
+	WHERE p.pid NOT IN (SELECT pid FROM ${db}.person);
+
+For (pfid, pid) in person_still_missing:
+	Log "  Deleting pfid '${pfid}' since pid '${pid}' cannot be resolved..."
+	Execute via conn:
+		DELETE FROM ${db}.personforekomst
+		WHERE  pfid = $${pfid}
+
+Log "  Ensuring that every person has a corresponding personforekomst..."
+
+Set pid_adjustments = result via conn:
+	WITH cte AS
+	(
+		SELECT p.pid, max(pf.score) AS score
+		FROM ${db}.person p
+		INNER JOIN ${db}.personforekomst pf ON pf.pid = p.pid
+		WHERE p.pid NOT IN (SELECT pfid FROM ${db}.personforekomst)
+		GROUP BY p.pid
+	)
+	SELECT c.pid, min(pf.pfid) AS pfid
+	FROM cte c
+	INNER JOIN ${db}.personforekomst pf ON pf.pid = c.pid
+	WHERE pf.score = c.score
+	GROUP BY c.pid;
+
+For (pid, pfid) in pid_adjustments:
+	Log "  Changing pid from '${pid}' to '${pfid}'..."
+	# If any of this fails, it is unclear what to do.
+	Execute via conn:
+		UPDATE ${db}.personforekomst SET pid = $${pfid} WHERE pid = $${pid}
+	Execute via conn:
+		UPDATE ${db}.person SET pid = $${pfid} WHERE pid = $${pid}
+
+Log "  Checking that every personforekomst is now associated with a person..."
+
+Set person_missing = result via conn:
+	SELECT pfid
+	FROM ${db}.personforekomst pf
+	WHERE pid NOT IN (SELECT pid FROM ${db}.person)
+
+Assert person_missing.size == 0
+
+Log "  Deleting persons with no personforekomst..."
+
+Execute via conn:
+	DELETE FROM ${db}.person
+	WHERE pid NOT IN (SELECT pid FROM ${db}.personforekomst)
+
+Log "  Adding foreign key constraints between personforekomst and person..."
+
+Execute via conn:
+	SET SESSION foreign_key_checks=OFF
+Execute via conn:
+	SET SESSION alter_algorithm='INPLACE'
+Execute via conn:
+	ALTER TABLE ${db}.personforekomst
+	ADD CONSTRAINT fk_personforekomst_person
+	FOREIGN KEY (pid)
+	REFERENCES ${db}.person(pid)
+Execute via conn:
+	ALTER TABLE ${db}.person
+	ADD CONSTRAINT fk_person_personforekomst
+	FOREIGN KEY (pid)
+	REFERENCES ${db}.personforekomst(pfid)
+Execute via conn:
+	SET SESSION alter_algorithm='COPY'
+Execute via conn:
+	SET SESSION foreign_key_checks=ON
+
+Log "  Adding foreign keys to `kommunenummer`..."
+
+Execute via conn:
+	ALTER TABLE ${db}.person
+	RENAME COLUMN birthplace_mun_id TO birthplace_kommnr
+Execute via conn:
+	ALTER TABLE ${db}.person
+	RENAME COLUMN deathplace_mun_id TO deathplace_kommnr
+
+Execute via conn:
+	SET SESSION foreign_key_checks=OFF
+Execute via conn:
+	SET SESSION alter_algorithm='INPLACE'
+Execute via conn:
+	ALTER TABLE ${db}.person
+	ADD CONSTRAINT fk_person_birthplace_kommunenummer
+	FOREIGN KEY (birthplace_kommnr) REFERENCES ${db}.kommunenummer(kommnr)
+Execute via conn:
+	ALTER TABLE ${db}.person
+	ADD CONSTRAINT fk_person_deathplace_kommunenummer
+	FOREIGN KEY (deathplace_kommnr) REFERENCES ${db}.kommunenummer(kommnr)
+Execute via conn:
+	SET SESSION alter_algorithm='COPY'
+Execute via conn:
+	SET SESSION foreign_key_checks=ON
+
+####
+
+Log "Checking and adjusting family relation terms..."
+
+Execute via conn:
+	RENAME TABLE ${db}.family_relation TO ${db}.familierelasjonstype
+
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjonstype
+	MODIFY COLUMN id INT(2) NOT NULL;
+
+Set expected_familierelasjonstyper:
+	1	partner
+	2	parent
+	3	adoptiv
+	4	foster
+	5	ste
+
+Set actual_familierelasjonstyper = result via conn:
+	SELECT id, relation
+	FROM ${db}.familierelasjonstype
+	ORDER BY id
+
+Assert actual_familierelasjonstyper == expected_familierelasjonstyper
+
+# Reduce mix of Norwegian and English terms and replace 'partner' with at
+# more precise term.
+
+Set adjusted_familierelasjonstyper:
+	1	ektefelle
+	2	forelder
+
+For (id, relation) in adjusted_familierelasjonstyper:
+	Execute via conn:
+		UPDATE ${db}.familierelasjonstype
+		SET relation = $${relation}
+		WHERE id = $${id.as_integer}
+
+####
+
+Log "Cleaning up family relations..."
+
+Execute via conn:
+	CREATE TABLE ${db}.familierelasjon AS
+	SELECT
+		pf1.pid AS pid1,
+		pf2.pid AS pid2,
+		frt.id AS familierelasjonstype_id,
+		MIN(fl.time_stamp) AS `timestamp`
+	FROM ${db}.family_links fl
+	INNER JOIN ${db}.personforekomst pf1 ON pf1.pfid = fl.person_entry_id1
+	INNER JOIN ${db}.personforekomst pf2 ON pf2.pfid = fl.person_entry_id2
+	LEFT JOIN ${db}.familierelasjonstype frt ON frt.id = fl.relation_id
+	GROUP BY pid1, pid2, familierelasjonstype_id
+
+Execute via conn:
+	SET SESSION foreign_key_checks=OFF
+Execute via conn:
+	SET SESSION alter_algorithm='INPLACE'
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon MODIFY COLUMN familierelasjonstype_id INT(2) NOT NULL;
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon MODIFY COLUMN `timestamp` timestamp NOT NULL;
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon
+	ADD CONSTRAINT fk_familierelasjon_familierelasjontype
+	FOREIGN KEY (familierelasjonstype_id) REFERENCES familierelasjonstype(id)
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon
+	ADD CONSTRAINT fk_familierelasjon_person1
+	FOREIGN KEY (pid1) REFERENCES person(pid)
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon
+	ADD CONSTRAINT fk_familierelasjon_person2
+	FOREIGN KEY (pid2) REFERENCES person(pid)
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon
+	ADD PRIMARY KEY (pid1, pid2, familierelasjonstype_id)
+Execute via conn:
+	SET SESSION alter_algorithm='COPY'
+Execute via conn:
+	SET SESSION foreign_key_checks=ON
+
+####
+
+Log "Drop other tables (for now)..."
+
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.family_links
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.commune_stats
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.unknown_parents
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.links_to_verify
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.`references`
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.fob_all
+Execute via conn:
+	DROP TABLE IF EXISTS ${db}.fob_kilde
+
+Set tables_to_keep:
+	personforekomst
+	person
+	familierelasjon
+	familierelasjonstype
+	personforekomst_kommune
+	ref_kommuneenheter_alle
+	ref_fylker
+	ref_regioner
+	kommunenummer
+
+Set unexpected_tables = result via conn:
+	SELECT TABLE_NAME
+	FROM information_schema.TABLES
+	WHERE TABLE_SCHEMA = $${db}
+	  AND 0 = find_in_set(TABLE_NAME, replace($${tables_to_keep}, '\n', ','))
+	ORDER BY TABLE_NAME
+
+Assert unexpected_tables.size == 0
+
+####
+
+Log "Done."
