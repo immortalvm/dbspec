@@ -667,8 +667,7 @@ public class Interpreter {
         String operatorString = interpretComparisonOperator(operator, level + 1);
         TSNode right = n.getChildByFieldName("right");
         Object rightValue = interpretBasicExpression(right, level + 1, ctx);
-        ensureInstance(n, "The left side of the comparison", leftValue, BigInteger.class, String.class, Rows.class);
-        ensureInstance(n, "The right side of the comparison", rightValue, BigInteger.class, String.class, Rows.class);
+
         if (leftValue instanceof BigInteger && rightValue instanceof BigInteger) {
             int comparisonValue = ((BigInteger) leftValue).compareTo((BigInteger) rightValue);
             switch (operatorString) {
@@ -702,7 +701,7 @@ public class Interpreter {
                     throw new AstFailure(n);
             }
         } else if ((leftValue instanceof Rows || leftValue instanceof String)
-                && (rightValue instanceof Rows || rightValue instanceof String)) { // Rows
+                && (rightValue instanceof Rows || rightValue instanceof String)) {
             boolean eq;
             switch (operatorString) {
                 case "==":
@@ -750,7 +749,12 @@ public class Interpreter {
                 rs.free();
             }
         } else {
-            throw new SemanticFailure(n, "Comparing expressions with incompatible types. Use .as_integer if necessary.");
+            throw new SemanticFailure(n, "Unsupported comparison between "
+                    + indefinite(getType(leftValue)) + " and "
+                    + indefinite(getType(rightValue)) + "."
+                    + (leftValue instanceof BigInteger || rightValue instanceof BigInteger ? " Use .as_integer if necessary."
+                    : leftValue instanceof Rows || rightValue instanceof Rows ? " Use .stripped if necessary."
+                    : ""));
         }
     }
 

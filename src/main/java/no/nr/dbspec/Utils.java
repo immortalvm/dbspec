@@ -3,6 +3,7 @@ package no.nr.dbspec;
 import org.treesitter.TSNode;
 
 import java.math.BigInteger;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -66,7 +67,23 @@ public class Utils {
             return "\"" + x + "\"";
         } else if (obj instanceof Rows) {
             try {
-                return "[" + ((Rows) obj).getSize() + " rows]";
+                Rows rows = (Rows) obj;
+                int n = rows.getSize();
+                String[] row;
+                String contents = n > 0
+                            && rows.tryLockAndRewind()
+                            && 0 < (row = rows.next()).length
+                        ? Arrays.stream(row)
+                            .map(x -> escape(x, properly))
+                            .collect(Collectors.joining(", "))
+                        : "";
+                return String.format("[%d %s%s%s%s%s]",
+                        n,
+                        n == 1 ? "row" : "rows",
+                        contents.isEmpty() ? "" : ": (",
+                        contents,
+                        contents.isEmpty() ? "" : ")",
+                        n > 1 ? ", ..." : "");
             } catch (SQLException e) {
                 return "[?]";
             }
@@ -85,16 +102,21 @@ public class Utils {
             }
         }
         String t = Arrays.stream(classes).map(Utils::shortName).collect(Collectors.joining(" or "));
-        throw new SemanticFailure(n, String.format("%s must be a%s %s, not %s.",
+        throw new SemanticFailure(n, String.format("%s must be %s, not %s.",
                 errorMessageStart,
-                t.matches("[aeiouyAEIOUY].*") ? "n" : "",
-                t,
-                getType(obj)));
+                indefinite(t),
+                indefinite(getType(obj))));
     }
 
     public static String shortName(Class<?> cls) {
-        if (cls == String.class) return "string";
-        if (cls == BigInteger.class) return "integer";
-        return cls.getSimpleName();
+        return cls == String.class ? "string"
+                : cls == BigInteger.class ? "integer"
+                : Rows.class.isAssignableFrom(cls) ? "list of rows"
+                : Connection.class.isAssignableFrom(cls) ? "database connection"
+                : cls.getSimpleName();
+    }
+
+    public static String indefinite(String noun) {
+        return (noun.matches("[aeiouyAEIOUY].*") ? "an " : "a ") + noun;
     }
 }
