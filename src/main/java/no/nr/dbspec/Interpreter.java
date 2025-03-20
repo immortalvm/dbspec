@@ -68,7 +68,7 @@ public class Interpreter {
     void logNodeLines(TSNode n) {
         int end = n.getEndPoint().getRow();
         for (int i = n.getStartPoint().getRow(); i <= end; i++) {
-            log.error("%d:\t%s", i, sourceLines[i].stripTrailing());
+            log.error("%d:\t%s", i + 1, sourceLines[i].stripTrailing());
         }
     }
 
