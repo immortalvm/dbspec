@@ -47,17 +47,15 @@ Assert res.size == 1
 # For (id, mdo) in res:
 # 	Log "${id} ${mdo}"
 
-Set id = 2
 Set mdoPerson:
 	(SCHEMA person "" (TABLE person "" (COLUMN businessentityid "Primary key for person records.") (COLUMN persontype "${typeDescription}")))
 Set mdo:
 	(METADATA null null (INFO description "Automatic test database") (INFO dataOwner "Example.com") ${mdoPerson})
 
-# With safe interpolation, $${..}.
 Set res = result via conn:
 	SELECT 1
 	FROM trace
-	WHERE id = $${id}
+	WHERE id = 2
 	AND (data)."type" = 'adjustment'
 	AND (data)."filename" = 'my.siard'
 	AND (data)."mdo" = $${mdo}

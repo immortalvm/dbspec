@@ -323,6 +323,10 @@ public class Interpreter {
         Object connectionObject = ctx.getValue(connectionString);
         ensureInstance(n, "The source", connectionObject, Connection.class);
         Connection dbmsConnection = (Connection)connectionObject;
+        SiardMd md = siardMd.getOrDefault(connectionString, new SiardMd()); // TODO: Use dbmsConnection instead
+        if (!md.hasChildren()) {
+            log.warn("No SIARD metadata specified for connection '%s'.", connectionString);
+        }
         Object file = interpretBasicExpression(n.getChildByFieldName("file"), level, ctx);
         ensureInstance(n, "The filename", file, String.class);
         String fileString = (String)file;
@@ -339,22 +343,19 @@ public class Interpreter {
             // TODO: SemanticError does not seems entirely appropriate here.
             throw new SemanticFailure(n, reason);
         }
-        SiardMd md = siardMd.get(connectionString);
-        if (md == null || !md.hasChildren()) {
-            log.debugIndented(level, "* No additional SIARD metadata.", md);
-        } else {
-            log.debugIndented(level, "* Additional SIARD metadata: %s", md);
-            log.verbose("Adjusting metadata of %s.", path);
-            try {
-                siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection);
-            } catch (SiardException e) {
-                // Maybe we should also delete the .siard file here to avoid confusion?
-                String reason = "Adjusting SIARD metadata failed";
-                if (!e.getReason().isEmpty()) {
-                    reason += ": " + e.getReason();
-                }
-                throw new SemanticFailure(n, reason); // TODO: Same issue as above.
+
+        // Adjust metadata
+        log.debugIndented(level, "* Additional SIARD metadata: %s", md);
+        log.verbose("Adjusting metadata of %s.", path);
+        try {
+            siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection);
+        } catch (SiardException e) {
+            // Maybe we should also delete the .siard file here to avoid confusion?
+            String reason = "Adjusting SIARD metadata failed";
+            if (!e.getReason().isEmpty()) {
+                reason += ": " + e.getReason();
             }
+            throw new SemanticFailure(n, reason); // TODO: Same issue as above.
         }
         String roaeFileString = skipExtension(fileString) + ".roae";
         try {
@@ -400,8 +401,7 @@ public class Interpreter {
     void interpretSiardMetadata(TSNode n, int level, NormalContext ctx) {
         TSNode connection = n.getChildByFieldName("connection");
         String connectionString = interpretIdentifier(connection, level + 1);
-        SiardMd md = siardMd.computeIfAbsent(connectionString, x ->
-                new SiardMd(SiardMdType.METADATA, null, null));
+        SiardMd md = siardMd.computeIfAbsent(connectionString, _x -> new SiardMd());
         log.debugIndented(level, "* SIARD metadata for %s", connectionString);
         interpretSiardMetadataField("dbname", n, level + 1, ctx, md);
         interpretSiardMetadataField("description", n, level + 1, ctx, md);

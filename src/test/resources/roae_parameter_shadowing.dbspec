@@ -20,12 +20,11 @@ Metadata for conn:
 		Body:
 			SELECT '${x}' AS x1, $${x} AS x2, '${y}' AS y1, $${y} AS y2
 
-
 Output conn to "my.siard"
 
 Set res = result via conn:
 	SELECT * FROM trace
-Assert res.size == 2
+Assert res.size == 3
 
 # Change interpolation symbol so that we can use $ freely below.
 Interpolation symbol = '@'
@@ -35,7 +34,7 @@ Set mdo:
 Set res = result via conn:
 	SELECT 1
 	FROM trace
-	WHERE id = 2
+	WHERE id = 3
 	AND (data)."type" = 'roae'
 	AND (data)."filename" = 'my.roae'
 	AND (data)."mdo" = @@{mdo}

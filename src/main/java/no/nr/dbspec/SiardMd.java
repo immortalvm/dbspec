@@ -9,4 +9,8 @@ public class SiardMd extends MdBase<SiardMd.SiardMdType, SiardMd> {
     public SiardMd(SiardMdType type, String name, String data) {
         super(type, name, data);
     }
+
+    public SiardMd() {
+        this(SiardMdType.METADATA, null, null);
+    }
 }

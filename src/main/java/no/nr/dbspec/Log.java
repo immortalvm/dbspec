@@ -31,6 +31,15 @@ public class Log {
         }
     }
 
+    /**
+     * Log warning.
+     */
+    public void warn(String message, Object... args) {
+        if (level > QUIET) {
+            printToStderr("WARNING: ", message, args);
+        }
+    }
+
     public void verbose(String message, Object... args) {
         if (level >= VERBOSE) {
             printToStderr("", message, args);

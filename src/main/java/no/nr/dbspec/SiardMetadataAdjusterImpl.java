@@ -4,7 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import no.nr.dbspec.SiardMd.SiardMdType;
 import ch.admin.bar.siard2.api.Archive;
@@ -65,6 +69,7 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
     }
 
     private void updateArchiveMetadata(Archive archive, SiardMd mdo) {
+        HashSet<String> schemas = new HashSet<>();
         for (SiardMd sObj : mdo.getChildren(SiardMdType.SCHEMA)) {
             String name = sObj.getName();
             Schema schema =
@@ -76,10 +81,22 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
             updateTableMetadata(metaSchema, sObj, prefix);
             updateViewMetadata(metaSchema, sObj, prefix);
             updateTypeMetadata(metaSchema, sObj, prefix);
+            schemas.add(name);
+        }
+        if (schemas.size() < archive.getSchemas()) {
+            String missing = IntStream
+                    .range(0, archive.getSchemas())
+                    .mapToObj(archive::getSchema)
+                    .map(Schema::getMetaSchema)
+                    .map(MetaSchema::getName)
+                    .filter(Predicate.not(schemas::contains))
+                    .collect(Collectors.joining(", "));
+            log.warn("Schemas in .siard not mentioned in Metadata: %s", missing);
         }
     }
 
     private void updateTableMetadata(MetaSchema schema, SiardMd mdo, String prefix) {
+        HashSet<String> tables = new HashSet<>();
         for (SiardMd tObj : mdo.getChildren(SiardMdType.TABLE)) {
             String name = tObj.getName();
             MetaTable table = ensureNotNull("Table", prefix, name, schema::getMetaTable);
@@ -88,6 +105,17 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
             updateTableColumnMetadata(table, tObj, p2);
             updateKeyMetadata(table, tObj, p2);
             updateCheckMetadata(table, tObj, p2);
+            tables.add(name);
+        }
+        if (tables.size() < schema.getMetaTables()) {
+            String missing = IntStream
+                    .range(0, schema.getMetaTables())
+                    .mapToObj(schema::getMetaTable)
+                    .map(MetaTable::getName)
+                    .filter(Predicate.not(tables::contains))
+                    .map(name -> prefix + name)
+                    .collect(Collectors.joining(", "));
+            log.warn("Tables in .siard not mentioned in Metadata: %s", missing);
         }
     }
 
@@ -102,12 +130,28 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
     }
 
     private void updateViewMetadata(MetaSchema schema, SiardMd mdo, String prefix) {
+        HashSet<String> views = new HashSet<>();
         for (SiardMd vObj : mdo.getChildren(SiardMdType.VIEW)) {
             String name = vObj.getName();
             MetaView view = ensureNotNull("View", prefix, name, schema::getMetaView);
             view.setDescription(vObj.getData());
             String p2 = prefix + name + ".";
             updateViewColumnMetadata(view, vObj, p2);
+             if (view.getQueryOriginal() == null) {
+                 // Since SIARD Suite does not extract the original queries for PorstgreSQL (as of March 2025).
+                 log.warn("Original query missing for view '%s%s'.", prefix, name);
+             }
+            views.add(name);
+        }
+        if (views.size() < schema.getMetaViews()) {
+            String missing = IntStream
+                    .range(0, schema.getMetaViews())
+                    .mapToObj(schema::getMetaView)
+                    .map(MetaView::getName)
+                    .filter(Predicate.not(views::contains))
+                    .map(name -> prefix + name)
+                    .collect(Collectors.joining(", "));
+            log.warn("Views in .siard not mentioned in Metadata: %s", missing);
         }
     }
 
