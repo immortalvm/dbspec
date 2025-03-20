@@ -82,6 +82,7 @@ public class SiardExtractorImpl implements SiardExtractor {
             if (showOutput) {
                 log.newline();
             }
+            p.waitFor();
             if (p.exitValue() != 0) {
                 StringBuilder sb = new StringBuilder();
                 sb.append("Exit value ").append(p.exitValue()).append(".");
