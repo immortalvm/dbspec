@@ -7,6 +7,11 @@ Parameters:
 	user - Database user (must be able to create the staging database)
 	password - Database password (cannot contain quotes)
 
+Set root = result using "/usr/bin/env bash":
+	pwd
+
+Set db = "ohbr"
+
 Set dump_dir = "/tmp/befolkning_dump"
 
 ####
@@ -29,11 +34,11 @@ Log extraction_msg
 
 ####
 
-Log "Verify that the dump directory contains one and only one ohbr backup..."
+Log "Verify that the dump directory contains one and only one ${db} backup..."
 
 Set num_backups = result using "/usr/bin/env bash":
 	set -e
-	find '${dump_dir}' -maxdepth 1 -name "ohbr_*.sql" -type f | wc -l
+	find '${dump_dir}' -maxdepth 1 -name "${db}_*.sql" -type f | wc -l
 
 Assert num_backups.as_integer == 1
 
@@ -43,13 +48,11 @@ Log "Restoring to staging database..."
 
 # TODO: Use options file for password for security.
 Set restore_msg = result using "/usr/bin/env bash":
-	mariadb -h ${host} -P ${port} -u ${user} -p${password} < "${dump_dir}"/ohbr_*.sql
+	mariadb -h ${host} -P ${port} -u ${user} -p${password} < "${dump_dir}"/${db}_*.sql
 
 Log restore_msg
 
 ####
-
-Set db = "ohbr"
 
 Log "Establishing connection to staging database '${db}'..."
 
@@ -630,6 +633,18 @@ Set unexpected_tables = result via conn:
 	ORDER BY TABLE_NAME
 
 Assert unexpected_tables.size == 0
+
+####
+
+Set build = "${root}/build"
+Set siard = "${build}/${db}.siard"
+
+Log "Produce '${siard}'... (This may take a while.)"
+
+Execute using "/usr/bin/env bash":
+	mkdir -p "${build}"
+
+Output conn to "${siard}"
 
 ####
 
