@@ -2,6 +2,7 @@ package no.nr.dbspec;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashSet;
@@ -35,10 +36,10 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
     }
 
     @Override
-    public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection) throws SiardException {
+    public void updateMetadata(Path siardFilePath, SiardMd mdo, Connection connection) throws SiardException {
         Archive archive = ArchiveImpl.newInstance();
         try {
-            File siardFile = new File(siardFilename);
+            File siardFile = siardFilePath.toFile();
             try {
                 archive.open(siardFile);
                 MetaData md = archive.getMetaData();

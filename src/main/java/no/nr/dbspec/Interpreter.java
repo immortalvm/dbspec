@@ -331,10 +331,10 @@ public class Interpreter {
         ensureInstance(n, "The filename", file, String.class);
         String fileString = (String)file;
         log.debugIndented(level, "* SIARD output %s to '%s'", connectionString, fileString);
-        Path path = dir.resolve(fileString);
+        Path siardFilePath = dir.resolve(fileString);
         try {
-            log.verbose("Creating/replacing %s.", path);
-            siardExtractor.transfer(dbmsConnection, path);
+            log.verbose("Creating/replacing %s.", siardFilePath);
+            siardExtractor.transfer(dbmsConnection, siardFilePath);
         } catch (SiardException e) {
             String reason = "SIARD transfer failed";
             if (!e.getReason().isEmpty()) {
@@ -346,9 +346,9 @@ public class Interpreter {
 
         // Adjust metadata
         log.debugIndented(level, "* Additional SIARD metadata: %s", md);
-        log.verbose("Adjusting metadata of %s.", path);
+        log.verbose("Adjusting metadata of %s.", siardFilePath);
         try {
-            siardMetadataAdjuster.updateMetadata(fileString, md, dbmsConnection);
+            siardMetadataAdjuster.updateMetadata(siardFilePath, md, dbmsConnection);
         } catch (SiardException e) {
             // Maybe we should also delete the .siard file here to avoid confusion?
             String reason = "Adjusting SIARD metadata failed";
@@ -357,9 +357,9 @@ public class Interpreter {
             }
             throw new SemanticFailure(n, reason); // TODO: Same issue as above.
         }
-        String roaeFileString = skipExtension(fileString) + ".roae";
+        String roaeFileString = skipExtension(siardFilePath.toString()) + ".roae";
         try {
-            Path roaePath = dir.resolve(roaeFileString);
+            Path roaePath = Path.of(roaeFileString);
             List<RoaeMd> commands = commandMds.get(md);
             if (commands == null || commands.isEmpty()) {
                 String message = "No commands defined. ";

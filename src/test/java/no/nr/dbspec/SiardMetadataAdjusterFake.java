@@ -1,5 +1,6 @@
 package no.nr.dbspec;
 
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.Map;
 
@@ -11,10 +12,10 @@ public class SiardMetadataAdjusterFake implements SiardMetadataAdjuster {
     }
 
     @Override
-    public void updateMetadata(String siardFilename, SiardMd mdo, Connection connection) {
+    public void updateMetadata(Path siardFilePath, SiardMd mdo, Connection connection) {
         database.trace(Map.of(
                 "type", "adjustment",
-                "filename", siardFilename,
+                "filename", siardFilePath.getFileName().toString(),
                 "mdo", mdo.toString(),
                 "url", Database.getUrl(connection)));
     }
