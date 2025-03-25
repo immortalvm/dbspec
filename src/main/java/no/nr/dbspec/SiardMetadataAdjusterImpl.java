@@ -24,6 +24,8 @@ import ch.admin.bar.siard2.api.MetaView;
 import ch.admin.bar.siard2.api.Schema;
 import ch.admin.bar.siard2.api.primary.ArchiveImpl;
 
+import static no.nr.dbspec.Utils.pluralS;
+
 public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
 
     private final Log log;
@@ -83,7 +85,8 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
             updateTypeMetadata(metaSchema, sObj, prefix);
             schemas.add(name);
         }
-        if (schemas.size() < archive.getSchemas()) {
+        int nMissing = archive.getSchemas() - schemas.size();
+        if (nMissing > 0) {
             String missing = IntStream
                     .range(0, archive.getSchemas())
                     .mapToObj(archive::getSchema)
@@ -91,7 +94,7 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
                     .map(MetaSchema::getName)
                     .filter(Predicate.not(schemas::contains))
                     .collect(Collectors.joining(", "));
-            log.warn("Schemas in .siard not mentioned in Metadata: %s", missing);
+            log.warn("Schema%s in SIARD file not mentioned in Metadata: %s", pluralS(nMissing), missing);
         }
     }
 
@@ -107,25 +110,39 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
             updateCheckMetadata(table, tObj, p2);
             tables.add(name);
         }
-        if (tables.size() < schema.getMetaTables()) {
+        int nMissing = schema.getMetaTables()- tables.size();
+        if (nMissing > 0) {
             String missing = IntStream
                     .range(0, schema.getMetaTables())
                     .mapToObj(schema::getMetaTable)
                     .map(MetaTable::getName)
                     .filter(Predicate.not(tables::contains))
-                    .map(name -> prefix + name)
                     .collect(Collectors.joining(", "));
-            log.warn("Tables in .siard not mentioned in Metadata: %s", missing);
+            log.warn("Table%s of schema '%s' in SIARD file not mentioned in Metadata: %s",
+                    pluralS(nMissing), stripTrailingDots(prefix), missing);
         }
     }
 
     private void updateTableColumnMetadata(MetaTable table, SiardMd mdo, String prefix) {
+        HashSet<String> columns = new HashSet<>();
         for (SiardMd cObj : mdo.getChildren(SiardMdType.COLUMN)) {
             String name = cObj.getName();
             MetaColumn column =
                     ensureNotNull("Column of " + table.getName(), prefix, name, table::getMetaColumn);
             column.setDescription(cObj.getData());
             updateFieldMetadata(column, cObj, prefix + name + ".");
+            columns.add(name);
+        }
+        int nMissing = table.getMetaColumns() - columns.size();
+        if (nMissing > 0) {
+            String missing = IntStream
+                    .range(0, table.getMetaColumns())
+                    .mapToObj(table::getMetaColumn)
+                    .map(MetaColumn::getName)
+                    .filter(Predicate.not(columns::contains))
+                    .collect(Collectors.joining(", "));
+            log.warn("Column%s of table '%s' in SIARD file not mentioned in Metadata: %s",
+                    pluralS(nMissing), stripTrailingDots(prefix), missing);
         }
     }
 
@@ -137,21 +154,22 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
             view.setDescription(vObj.getData());
             String p2 = prefix + name + ".";
             updateViewColumnMetadata(view, vObj, p2);
-             if (view.getQueryOriginal() == null) {
-                 // Since SIARD Suite does not extract the original queries for PorstgreSQL (as of March 2025).
-                 log.warn("Original query missing for view '%s%s'.", prefix, name);
-             }
+            if (view.getQueryOriginal() == null) {
+                // Since SIARD Suite does not extract the original queries for PostgreSQL (as of March 2025).
+                log.warn("Original query missing for view '%s%s'.", prefix, name);
+            }
             views.add(name);
         }
-        if (views.size() < schema.getMetaViews()) {
+        int nMissing = schema.getMetaViews() - views.size();
+        if (nMissing > 0) {
             String missing = IntStream
                     .range(0, schema.getMetaViews())
                     .mapToObj(schema::getMetaView)
                     .map(MetaView::getName)
                     .filter(Predicate.not(views::contains))
-                    .map(name -> prefix + name)
                     .collect(Collectors.joining(", "));
-            log.warn("Views in .siard not mentioned in Metadata: %s", missing);
+            log.warn("View%s of schema '%s' in SIARD file not mentioned in Metadata: %s",
+                    pluralS(nMissing), stripTrailingDots(prefix), missing);
         }
     }
 
@@ -210,5 +228,13 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
     private String getInfoField(SiardMd mdo, String name) {
         SiardMd child = mdo.getChild(SiardMdType.INFO, name);
         return child == null ? null : child.getData();
+    }
+
+    private static String stripTrailingDots(String prefix) {
+        int n = prefix.length();
+        while (n > 0 && prefix.charAt(n -1) == '.') {
+            n--;
+        }
+        return prefix.substring(0, n);
     }
 }

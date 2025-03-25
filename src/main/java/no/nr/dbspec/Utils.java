@@ -77,9 +77,9 @@ public class Utils {
                             .map(x -> escape(x, properly))
                             .collect(Collectors.joining(", "))
                         : "";
-                return String.format("[%d %s%s%s%s%s]",
+                return String.format("[%d row%s%s%s%s%s]",
                         n,
-                        n == 1 ? "row" : "rows",
+                        pluralS(n),
                         contents.isEmpty() ? "" : ": (",
                         contents,
                         contents.isEmpty() ? "" : ")",
@@ -118,5 +118,9 @@ public class Utils {
 
     public static String indefinite(String noun) {
         return (noun.matches("[aeiouyAEIOUY].*") ? "an " : "a ") + noun;
+    }
+
+    public static String pluralS(int n) {
+        return n == 1 ? "" : "s";
     }
 }
