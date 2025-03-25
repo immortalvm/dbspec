@@ -103,10 +103,11 @@ public class InterpreterTests {
         Interpreter i = new Interpreter(
                 log,
                 dir,
-                scriptRunner,
                 properties,
-                extractor,
+                false,
                 new Dbms(),
+                scriptRunner,
+                extractor,
                 adjuster,
                 roaeProducer);
         StatusCode code = i.interpret(path);

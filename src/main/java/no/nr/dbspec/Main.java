@@ -27,12 +27,16 @@ public class Main {
             "d", "directory", true, "Set working/root directory");
     private static final Option configOpt = new Option(
             "c", "config", true, "Specify config file");
+    private static final Option existingSiardOpt = new Option(
+            null, "use-existing-SIARD", false,
+            "Suppress .siard extraction, using existing file(s) instead.");
     private static final Options options = new Options()
             .addOption(verboseOpt)
             .addOption(debugOpt)
             .addOption(quietOpt)
             .addOption(dirOpt)
-            .addOption(configOpt);
+            .addOption(configOpt)
+            .addOption(existingSiardOpt);
 
     public static void main(String[] args) {
         System.exit(run(args).getValue());
@@ -88,10 +92,11 @@ public class Main {
         Dbms dbms = new Dbms();
         Interpreter i = new Interpreter(log,
                 dir,
-                new ScriptRunnerImpl(),
                 config,
-                new SiardExtractorImpl(dbms, log, dir),
+                cmd.hasOption(existingSiardOpt),
                 dbms,
+                new ScriptRunnerImpl(),
+                new SiardExtractorImpl(dbms, log, dir),
                 new SiardMetadataAdjusterImpl(log),
                 new RoaeProducerImpl());
 

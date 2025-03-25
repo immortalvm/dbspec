@@ -27,6 +27,7 @@ import static no.nr.dbspec.Utils.*;
 
 @SuppressWarnings("SameParameterValue")
 public class Interpreter {
+    private final boolean useExistingSiard;
     private final ScriptRunner scriptRunner;
     private final Path dir;
     private final Log log;
@@ -46,20 +47,22 @@ public class Interpreter {
     public Interpreter(
             Log log,
             Path dir,
-            ScriptRunner scriptRunner,
             Properties config,
-            SiardExtractor siardExtractor,
+            boolean useExistingSiard,
             Dbms dbms,
+            ScriptRunner scriptRunner,
+            SiardExtractor siardExtractor,
             SiardMetadataAdjuster siardMetadataAdjuster,
             RoaeProducer roaeProducer) {
-        this.scriptRunner = scriptRunner;
         this.context = new NormalContext();
         this.siardMd = new HashMap<>();
         this.commandMds = new HashMap<>();
-        this.dbms = dbms;
         this.log = log;
         this.dir = dir;
         this.config = config;
+        this.useExistingSiard = useExistingSiard;
+        this.dbms = dbms;
+        this.scriptRunner = scriptRunner;
         this.siardExtractor = siardExtractor;
         this.siardMetadataAdjuster = siardMetadataAdjuster;
         this.roaeProducer = roaeProducer;
@@ -332,16 +335,23 @@ public class Interpreter {
         String fileString = (String)file;
         log.debugIndented(level, "* SIARD output %s to '%s'", connectionString, fileString);
         Path siardFilePath = dir.resolve(fileString);
-        try {
-            log.verbose("Creating/replacing %s.", siardFilePath);
-            siardExtractor.transfer(dbmsConnection, siardFilePath);
-        } catch (SiardException e) {
-            String reason = "SIARD transfer failed";
-            if (!e.getReason().isEmpty()) {
-                reason += ": " + e.getReason();
+
+        if (!useExistingSiard) {
+            try {
+                log.verbose("Creating/replacing %s.", siardFilePath);
+                siardExtractor.transfer(dbmsConnection, siardFilePath);
+            } catch (SiardException e) {
+                String reason = "SIARD transfer failed";
+                if (!e.getReason().isEmpty()) {
+                    reason += ": " + e.getReason();
+                }
+                // TODO: SemanticError does not seems entirely appropriate here.
+                throw new SemanticFailure(n, reason);
             }
-            // TODO: SemanticError does not seems entirely appropriate here.
-            throw new SemanticFailure(n, reason);
+        } else if (siardFilePath.toFile().exists()) {
+            log.warn("Using existing SIARD file: %s", siardFilePath);
+        } else {
+            throw new SemanticFailure(n, "SIARD file missing: " + siardFilePath);
         }
 
         // Adjust metadata
