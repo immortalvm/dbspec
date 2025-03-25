@@ -1059,7 +1059,7 @@ public class Interpreter {
         TSPoint sp = n.getStartPoint();
         TSPoint ep = n.getEndPoint();
         if (sp.getRow() == ep.getRow()) {
-            return sourceLines[sp.getRow()].substring(sp.getColumn(), n.getEndPoint().getColumn());
+            return safeSourceString(sp.getRow(), sp.getColumn(), ep.getColumn());
         }
         StringBuilder sb = new StringBuilder();
         int i = sp.getRow();
@@ -1069,7 +1069,13 @@ public class Interpreter {
             sb.append(sourceLines[i]);
             sb.append(lineEndings[i++]);
         }
-        sb.append(sourceLines[i], 0, ep.getColumn());
+        sb.append(safeSourceString(i, 0, ep.getColumn()));
         return sb.toString();
+    }
+
+    // We must use this since 'to' may include a carriage return.
+    private String safeSourceString(int line, int from, int to) {
+        String str = sourceLines[line];
+        return str.substring(from, Math.min(str.length(), to));
     }
 }
