@@ -95,7 +95,7 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
                     .map(MetaSchema::getName)
                     .filter(Predicate.not(schemas::contains))
                     .collect(Collectors.joining(", "));
-            log.warn("Schema%s in SIARD file not mentioned in Metadata: %s", pluralS(nMissing), missing);
+            log.warn("Schema%s not mentioned in Metadata: %s", pluralS(nMissing), missing);
         }
     }
 
@@ -119,7 +119,7 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
                     .map(MetaTable::getName)
                     .filter(Predicate.not(tables::contains))
                     .collect(Collectors.joining(", "));
-            log.warn("Table%s of schema '%s' in SIARD file not mentioned in Metadata: %s",
+            log.warn("Table%s of schema '%s' not mentioned in Metadata: %s",
                     pluralS(nMissing), stripTrailingDots(prefix), missing);
         }
     }
@@ -136,13 +136,13 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
         }
         int nMissing = table.getMetaColumns() - columns.size();
         if (nMissing > 0) {
-            String missing = IntStream
+            String missing = columns.isEmpty() ? "." : ": " + IntStream
                     .range(0, table.getMetaColumns())
                     .mapToObj(table::getMetaColumn)
                     .map(MetaColumn::getName)
                     .filter(Predicate.not(columns::contains))
                     .collect(Collectors.joining(", "));
-            log.warn("Column%s of table '%s' in SIARD file not mentioned in Metadata: %s",
+            log.warn("Column%s of table '%s' not mentioned in Metadata%s",
                     pluralS(nMissing), stripTrailingDots(prefix), missing);
         }
     }
@@ -169,7 +169,7 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
                     .map(MetaView::getName)
                     .filter(Predicate.not(views::contains))
                     .collect(Collectors.joining(", "));
-            log.warn("View%s of schema '%s' in SIARD file not mentioned in Metadata: %s",
+            log.warn("View%s of schema '%s' not mentioned in Metadata: %s",
                     pluralS(nMissing), stripTrailingDots(prefix), missing);
         }
     }
