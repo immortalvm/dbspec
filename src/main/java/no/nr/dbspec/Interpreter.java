@@ -159,7 +159,7 @@ public class Interpreter {
     }
 
     void interpretParameter(TSNode n, int level, NormalContext ctx) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
         String descriptionString = interpretShortDescrOf(n, level, ctx);
@@ -216,11 +216,11 @@ public class Interpreter {
     }
 
     void interpretSet(TSNode n, int level, NormalContext ctx) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String variableName = interpretIdentifier(name, level + 1);
-        TSNode value = n.getChildByFieldName("value");
+        TSNode value = getChildByFieldName(n, "value");
         Object variableValue = value.getType().equals("raw") ? interpretRaw(value, level, ctx)
-                                                             : interpretExpression(value, level, ctx);
+                : interpretExpression(value, level, ctx);
         if (variableValue == null) {
             throw new AstFailure(n);
         }
@@ -243,30 +243,30 @@ public class Interpreter {
     }
 
     void interpretExecuteUsing(TSNode n, int level, Context ctx) {
-        TSNode interpreter = n.getChildByFieldName("interpreter");
+        TSNode interpreter = getChildByFieldName(n, "interpreter");
         Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
         ensureInstance(n, "The interpreter command/path", interpreterString, String.class);
-        TSNode script = n.getChildByFieldName("script");
+        TSNode script = getChildByFieldName(n, "script");
         String scriptString = interpretRaw(script, level + 1, ctx);
         scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
         log.debugIndented(level, "* Executing using interpreter '%s': '%s'", interpreterString, scriptString);
     }
 
     String interpretScriptResult(TSNode n, int level, Context ctx) {
-        TSNode interpreter = n.getChildByFieldName("interpreter");
+        TSNode interpreter = getChildByFieldName(n, "interpreter");
         Object interpreterString = interpretBasicExpression(interpreter, level, ctx);
         ensureInstance(n, "The interpreter command/path", interpreterString, String.class);
-        TSNode script = n.getChildByFieldName("script");
+        TSNode script = getChildByFieldName(n, "script");
         String scriptString = interpretRaw(script, level + 1, ctx);
         log.debugIndented(level, "* Executing using interpreter %s: '%s'", interpreterString, scriptString);
         return scriptRunner.execute(n, (String)interpreterString, scriptString, dir);
     }
 
     Connection interpretConnection(TSNode n, int level, Context ctx) {
-        TSNode url = n.getChildByFieldName("url");
+        TSNode url = getChildByFieldName(n, "url");
         Object urlString = interpretBasicExpression(url, level, ctx);
         ensureInstance(n, "The URL", urlString, String.class);
-        TSNode properties = n.getChildByFieldName("properties");
+        TSNode properties = getChildByFieldName(n, "properties");
         log.debugIndented(level, "* Connection: %s", urlString);
         NormalContext connectionContext = interpretKeyValuePairs(properties, level + 1, ctx);
         try {
@@ -277,11 +277,11 @@ public class Interpreter {
     }
 
     void interpretExecuteSql(TSNode n, int level, Context ctx) {
-        TSNode connection = n.getChildByFieldName("connection");
+        TSNode connection = getChildByFieldName(n, "connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         Object connectionObject = ctx.getValue(connectionString);
         ensureInstance(n, "The target", connectionObject, Connection.class);
-        TSNode sql = n.getChildByFieldName("sql");
+        TSNode sql = getChildByFieldName(n, "sql");
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
         log.debugIndented(level, "* Executing SQL via connection %s: '%s'", connectionString, pair.getKey());
         try {
@@ -292,11 +292,11 @@ public class Interpreter {
     }
 
     Rows interpretQuery(TSNode n, int level, Context ctx) {
-        TSNode connection = n.getChildByFieldName("connection");
+        TSNode connection = getChildByFieldName(n, "connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         Object connectionObject = ctx.getValue(connectionString);
         ensureInstance(n, "The target", connectionObject, Connection.class);
-        TSNode sql = n.getChildByFieldName("sql");
+        TSNode sql = getChildByFieldName(n, "sql");
         Map.Entry<String, List<Object>> pair = interpretRawSql(sql, level + 1, ctx);
         log.debugIndented(level, "* Executing SQL query via connection %s: '%s'", connectionString, pair.getKey());
         try {
@@ -318,7 +318,7 @@ public class Interpreter {
     }
 
     void interpretSiardOutput(TSNode n, int level, Context ctx) {
-        TSNode connection = n.getChildByFieldName("connection");
+        TSNode connection = getChildByFieldName(n, "connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         Object connectionObject = ctx.getValue(connectionString);
         ensureInstance(n, "The source", connectionObject, Connection.class);
@@ -327,7 +327,7 @@ public class Interpreter {
         if (!md.hasChildren()) {
             log.warn("No SIARD metadata specified for connection '%s'.", connectionString);
         }
-        Object file = interpretBasicExpression(n.getChildByFieldName("file"), level, ctx);
+        Object file = interpretBasicExpression(getChildByFieldName(n, "file"), level, ctx);
         ensureInstance(n, "The filename", file, String.class);
         String fileString = (String)file;
         log.debugIndented(level, "* SIARD output %s to '%s'", connectionString, fileString);
@@ -381,10 +381,9 @@ public class Interpreter {
     }
 
     String interpretSiardMetadataField(String fieldName, TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode field = n.getChildByFieldName(fieldName);
-        if (field.isNull()) {
-            // Skip SIARD field when not provided
-            // TODO: Should we make sure it is erased instead?
+        TSNode field = getChildByFieldName(n, fieldName);
+        if (field == null) {
+            // Skip (i.e. keep current value) when not provided here.
             return "";
         }
         Object fieldString = field.getType().equals("raw")
@@ -399,7 +398,7 @@ public class Interpreter {
     }
 
     void interpretSiardMetadata(TSNode n, int level, NormalContext ctx) {
-        TSNode connection = n.getChildByFieldName("connection");
+        TSNode connection = getChildByFieldName(n, "connection");
         String connectionString = interpretIdentifier(connection, level + 1);
         SiardMd md = siardMd.computeIfAbsent(connectionString, _x -> new SiardMd());
         log.debugIndented(level, "* SIARD metadata for %s", connectionString);
@@ -425,7 +424,7 @@ public class Interpreter {
     }
 
     void interpretSiardSchema(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.SCHEMA, nameString, descriptionString);
@@ -443,7 +442,7 @@ public class Interpreter {
     }
 
     void interpretSiardType(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.TYPE, nameString, descriptionString);
@@ -452,7 +451,7 @@ public class Interpreter {
     }
 
     void interpretSiardTable(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.TABLE, nameString, descriptionString);
@@ -470,7 +469,7 @@ public class Interpreter {
     }
 
     void interpretSiardColumn(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.COLUMN, nameString, descriptionString);
@@ -484,7 +483,7 @@ public class Interpreter {
     }
 
     void interpretSiardField(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.FIELD, nameString, descriptionString);
@@ -498,7 +497,7 @@ public class Interpreter {
     }
 
     void interpretSiardKey(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.KEY, nameString, descriptionString);
@@ -507,7 +506,7 @@ public class Interpreter {
     }
 
     void interpretSiardCheck(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.CHECK, nameString, descriptionString);
@@ -516,7 +515,7 @@ public class Interpreter {
     }
 
     void interpretSiardView(TSNode n, int level, Context ctx, SiardMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         String descriptionString = interpretMdDescr(n, level, ctx);
         SiardMd md = new SiardMd(SiardMdType.VIEW, nameString, descriptionString);
@@ -530,7 +529,7 @@ public class Interpreter {
     }
 
     void interpretCommandDeclaration(TSNode n, int level, NormalContext ctx, SiardMd parent) {
-        TSNode title = n.getChildByFieldName("title");
+        TSNode title = getChildByFieldName(n, "title");
         Object titleString = title.getType().equals("raw")
                 ? interpretRaw(title, level, ctx)
                 : interpretBasicExpression(title, level, ctx);
@@ -538,11 +537,11 @@ public class Interpreter {
         RoaeMd md = new RoaeMd(RoaeMdType.COMMAND, null, (String)titleString);
         commandMds.computeIfAbsent(parent, x -> new ArrayList<>()).add(md);
         log.debugIndented(level, "* Command declaration: %s", titleString);
-        TSNode parameters = n.getChildByFieldName("parameters");
-        if (!parameters.isNull()) {
+        TSNode parameters = getChildByFieldName(n, "parameters");
+        if (parameters != null) {
             interpretCommandParameters(parameters, level + 1, ctx, md);
         }
-        TSNode body = n.getChildByFieldName("body");
+        TSNode body = getChildByFieldName(n, "body");
 
         Set<String> parameterSet = md
                 .getChildren(RoaeMdType.PARAMETER)
@@ -572,7 +571,7 @@ public class Interpreter {
     }
 
     void interpretCommandParameter(TSNode n, int level, NormalContext ctx, RoaeMd parent) {
-        TSNode name = n.getChildByFieldName("name");
+        TSNode name = getChildByFieldName(n, "name");
         String nameString = interpretIdentifier(name, level + 1);
         ctx.setValue(nameString, config.getProperty(nameString));
         String descriptionString = interpretShortDescrOf(n, level, ctx);
@@ -581,11 +580,11 @@ public class Interpreter {
     }
 
     void interpretForLoop(TSNode n, int level, NormalContext ctx) {
-        TSNode variables = n.getChildByFieldName("variables");
+        TSNode variables = getChildByFieldName(n, "variables");
         List<String> variablesStrings = interpretForVariables(variables, level + 1);
-        TSNode resultSet = n.getChildByFieldName("result_set");
+        TSNode resultSet = getChildByFieldName(n, "result_set");
         String resultSetString = interpretIdentifier(resultSet, level + 1);
-        TSNode body = n.getChildByFieldName("body");
+        TSNode body = getChildByFieldName(n, "body");
         log.debugIndented(level, "* For loop: %s in %s",
                 String.join(", ", variablesStrings), resultSetString);
         Object resObj = ctx.getValue(resultSetString);
@@ -630,15 +629,15 @@ public class Interpreter {
     }
 
     void interpretConditional(TSNode n, int level, NormalContext ctx) {
-        TSNode condition = n.getChildByFieldName("condition");
+        TSNode condition = getChildByFieldName(n, "condition");
         Boolean comparisonValue = interpretComparison(condition, level + 1, ctx);
         log.debugIndented(level, "* Conditional: value = '%s'", comparisonValue);
         if (comparisonValue) {
-            TSNode thenBlock = n.getChildByFieldName("then");
+            TSNode thenBlock = getChildByFieldName(n, "then");
             interpretStatementBlock(thenBlock, level + 1, ctx);
         } else {
-            TSNode elseBlock = n.getChildByFieldName("else");
-            if (!elseBlock.isNull()) {
+            TSNode elseBlock = getChildByFieldName(n, "else");
+            if (elseBlock != null) {
                 interpretStatementBlock(elseBlock, level + 1, ctx);
             }
         }
@@ -661,11 +660,11 @@ public class Interpreter {
     }
 
     Boolean interpretComparison(TSNode n, int level, Context ctx) {
-        TSNode left = n.getChildByFieldName("left");
+        TSNode left = getChildByFieldName(n, "left");
         Object leftValue = interpretBasicExpression(left, level + 1, ctx);
-        TSNode operator = n.getChildByFieldName("operator");
+        TSNode operator = getChildByFieldName(n, "operator");
         String operatorString = interpretComparisonOperator(operator, level + 1);
-        TSNode right = n.getChildByFieldName("right");
+        TSNode right = getChildByFieldName(n, "right");
         Object rightValue = interpretBasicExpression(right, level + 1, ctx);
 
         if (leftValue instanceof BigInteger && rightValue instanceof BigInteger) {
@@ -774,7 +773,7 @@ public class Interpreter {
             case "variable_instance":
                 return Stream.of(interpretIdentifier(n.getNamedChild(0), -1));
             case "dot_expression":
-                return basicExpressionVariableInstances(n.getChildByFieldName("left"));
+                return basicExpressionVariableInstances(getChildByFieldName(n, "left"));
             default:
                 return Stream.empty();
         }
@@ -806,9 +805,9 @@ public class Interpreter {
     }
 
     Object interpretDotExpression(TSNode n, int level, Context ctx) {
-        TSNode left = n.getChildByFieldName("left");
+        TSNode left = getChildByFieldName(n, "left");
         Object leftValue = interpretBasicExpression(left, level + 1, ctx);
-        TSNode right = n.getChildByFieldName("right");
+        TSNode right = getChildByFieldName(n, "right");
         String rightOperator = interpretDotOperator(right, level + 1);
         log.debugIndented(level, "* Dot expression: value = '%s'.'%s'", leftValue, rightOperator);
         return dotExpressionValue(n, leftValue, rightOperator);
@@ -884,8 +883,8 @@ public class Interpreter {
 
     @SuppressWarnings("unused")
     String interpretShortDescrOf(TSNode n, int level, Context ctx) {
-        TSNode description = n.getChildByFieldName("description");
-        return !description.isNull() && description.getType().equals("short_description")
+        TSNode description = getChildByFieldName(n, "description");
+        return description != null && description.getType().equals("short_description")
                 ? interpretShortDescription(description, level + 1)
                 : null;
     }
@@ -913,7 +912,7 @@ public class Interpreter {
 
     NormalContext interpretKeyValuePairs(TSNode n, int level, Context ctx) {
         NormalContext keyValuePairs = new NormalContext(); // NB: does not inherit from ctx
-        if (!n.isNull()) {
+        if (n != null) {
             getChildren(n).forEach(c -> {
                 if (c.getType().equals("key_value_pair")) {
                     interpretKeyValuePair(c, level + 1, keyValuePairs, ctx);
@@ -926,9 +925,9 @@ public class Interpreter {
     }
 
     void interpretKeyValuePair(TSNode n, int level, NormalContext keyValuePairs, Context ctx) {
-        TSNode key = n.getChildByFieldName("key");
+        TSNode key = getChildByFieldName(n, "key");
         String keyString = interpretIdentifier(key, level + 1);
-        TSNode value = n.getChildByFieldName("value");
+        TSNode value = getChildByFieldName(n, "value");
         Object valueString = value.getType().equals("raw")
                 ? interpretRaw(value, level, ctx)
                 : interpretBasicExpression(value, level, ctx);
@@ -1077,5 +1076,24 @@ public class Interpreter {
     private String safeSourceString(int line, int from, int to) {
         String str = sourceLines[line];
         return str.substring(from, Math.min(str.length(), to));
+    }
+
+    /**
+     * Since TSNode::getChildByFieldName does not work as expected.
+     * (It appears to perform a depth first search rather than sticking to depth 1.
+     * This also leads to shadowing.)
+     * Also, when there may be more than one such child, we generally want the last one.
+     * Finally, it is more convenient to use actual null values when the node is not found
+     * than a TSNode object for which isNull() returns true.
+     */
+    private TSNode getChildByFieldName(TSNode n, String fieldName) {
+        int c = n.getChildCount();
+        return IntStream
+                .range(0, c)
+                .map(i -> c - i - 1)
+                .filter(i -> fieldName.equals(n.getFieldNameForChild(i)))
+                .mapToObj(n::getChild)
+                .findFirst()
+                .orElse(null);
     }
 }

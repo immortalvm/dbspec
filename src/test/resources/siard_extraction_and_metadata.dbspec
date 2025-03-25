@@ -15,13 +15,15 @@ Set typeDescription:
 
 Metadata for conn:
 	dataOwner = "Example.com"
-	description:
-		Automatic test database
-	Schema person:
+	description = "Overridden below"
+	Schema personSchema:
+		description = "Pers"
 		Table person:
 			Column businessentityid - Primary key for person records.
 			Column persontype:
 				description = typeDescription
+	description:
+		Automatic test database
 
 Output conn to "my.siard"
 
@@ -48,7 +50,7 @@ Assert res.size == 1
 # 	Log "${id} ${mdo}"
 
 Set mdoPerson:
-	(SCHEMA person "" (TABLE person "" (COLUMN businessentityid "Primary key for person records.") (COLUMN persontype "${typeDescription}")))
+	(SCHEMA personSchema "Pers" (TABLE person "" (COLUMN businessentityid "Primary key for person records.") (COLUMN persontype "${typeDescription}")))
 Set mdo:
 	(METADATA null null (INFO description "Automatic test database") (INFO dataOwner "Example.com") ${mdoPerson})
 
@@ -58,6 +60,6 @@ Set res = result via conn:
 	WHERE id = 2
 	AND (data)."type" = 'adjustment'
 	AND (data)."filename" = 'my.siard'
-	AND (data)."mdo" = $${mdo}
 	AND (data)."url" = $${url}
+	AND (data)."mdo" = $${mdo}
 Assert res.size == 1
