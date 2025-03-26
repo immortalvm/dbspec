@@ -4,6 +4,8 @@ Parameters:
 	dump_tgz - Path to the HBR database dump
 	host - Hostname of MariaDB instance used for the staging database
 	port - Port of MariaDB instance
+	admin_user - Existing database user with sufficient privileges
+	admin_password
 	user - Database user (must be able to create the staging database)
 	password - Database password (cannot contain quotes)
 
@@ -13,6 +15,30 @@ Set root = result using "/usr/bin/env bash":
 Set db = "ohbr"
 
 Set dump_dir = "/tmp/befolkning_dump"
+
+####
+
+Log "Configuring database user '${user}'..."
+
+# To make sure the SIARD extraction does not include other databases,
+# we must use a database user which only has access to ${db}.
+
+# DbSpec relies on the JDBC drivers included with SIARD Suite.
+# Since the driver for MariaDB is not among those, we use the MySQL driver instead.
+Set aconn = connection to "jdbc:mysql://${host}:${port}" with:
+	user = "${admin_user}"
+	password = "${admin_password}"
+
+Execute via aconn:
+	DROP USER IF EXISTS $${user}@'localhost'
+Execute via aconn:
+	CREATE USER $${user}@'localhost' IDENTIFIED BY $${password}
+Execute via aconn:
+	GRANT ALL PRIVILEGES ON `${db}`.* TO $${user}@'localhost'
+Execute via aconn:
+	REVOKE ALL PRIVILEGES ON *.* FROM $${user}@'localhost'
+Execute via aconn:
+	FLUSH PRIVILEGES
 
 ####
 
@@ -56,14 +82,15 @@ Log restore_msg
 
 Log "Establishing connection to staging database '${db}'..."
 
-# TODO: DbSpec should also include the JDBC driver for MariaDB.
 Set conn = connection to "jdbc:mysql://${host}:${port}/${db}" with:
 	user = "${user}"
 	password = "${password}"
 
 ####
 
-Log "Deleting tables with names starting with 'deleted_'..."
+Log "Initial cleanup..."
+
+Log "  Deleting tables with names starting with 'deleted_'..."
 
 Execute via conn:
 	DROP TABLE IF EXISTS
@@ -84,9 +111,7 @@ For (table, rows) in table_sizes:
 
 Assert table_sizes.size == 0
 
-####
-
-Log "Dropping empty tables..."
+Log "  Dropping empty tables..."
 
 Set presumed_empty:
 	altered_names
@@ -105,18 +130,16 @@ Set tables = result via conn:
 	ORDER BY t.TABLE_NAME
 
 For (table, pe) in tables:
-	Log "  Checking ${table}..."
+	Log "    Checking ${table}..."
 	Set empty = result via conn:
 		SELECT NOT EXISTS (SELECT 1 FROM ${db}.${table})
 	Assert empty == pe
 	If empty.as_integer == 1:
 		Execute via conn:
 			DROP TABLE ${db}.${table}
-		Log "    Dropped"
+		Log "      Dropped"
 
-####
-
-Log "Drop other uninteresting tables..."
+Log "  Dropping other uninteresting tables..."
 
 # The first two tables only contain examples, whereas family_links_church
 # is still work in progress.
@@ -126,9 +149,7 @@ Execute via conn:
 		${db}.examples,
 		${db}.family_links_church
 
-####
-
-Log "Updating default collation..."
+Log "  Updating default collation..."
 
 # Will this be reflected in the .siard?
 Execute via conn:
@@ -152,14 +173,12 @@ Set tables = result via conn:
 	ORDER BY t.TABLE_NAME
 
 For (table) in tables:
-	Log "  ${table}"
+	Log "    ${table}"
 	Execute via conn:
 		ALTER TABLE ${db}.${table}
 		CONVERT TO CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_danish_ci'
 
-####
-
-Log "Cleaning up geographic entities..."
+Log "  Cleaning up geographic entities..."
 
 Execute via conn:
 	CREATE TABLE ${db}.ref_regioner
@@ -255,7 +274,7 @@ Set rubbish_pfid = result via conn:
 	WHERE LENGTH(pfid) < 8
 
 For (pfid) in rubbish_pfid:
-	Log "Dropping 'personforekomst' with pfid='${pfid}'"
+	Log "  Dropping 'personforekomst' with pfid='${pfid}'"
 	Execute via conn:
 		DELETE FROM ${db}.personforekomst
 		WHERE pfid = $${pfid}
@@ -301,7 +320,7 @@ Set unknown_kommnr = result via conn:
 Set unknown_kommnr = unknown_kommnr.as_integer
 
 If unknown_kommnr > 0:
-	Log "Beware: Skipping references to ${unknown_kommnr} unknown 'kommnr'..."
+	Log "  Beware: Skipping references to ${unknown_kommnr} unknown 'kommnr'..."
 	Execute via conn:
 		DELETE FROM ${db}.personforekomst_kommune
 		WHERE kommnr NOT IN (SELECT kommnr FROM ${db}.ref_kommuneenheter_alle)
@@ -321,6 +340,8 @@ Execute via conn:
 ####
 
 Log "Cleaning up the person table..."
+
+####
 
 # This could be simplified in MariaDB 11.6 and later.
 Execute via conn:
@@ -420,7 +441,7 @@ Set person_still_missing = result via conn:
 	WHERE p.pid NOT IN (SELECT pid FROM ${db}.person);
 
 For (pfid, pid) in person_still_missing:
-	Log "  Deleting pfid '${pfid}' since pid '${pid}' cannot be resolved..."
+	Log "    Deleting pfid '${pfid}' since pid '${pid}' cannot be resolved..."
 	Execute via conn:
 		DELETE FROM ${db}.personforekomst
 		WHERE  pfid = $${pfid}
@@ -443,7 +464,7 @@ Set pid_adjustments = result via conn:
 	GROUP BY c.pid;
 
 For (pid, pfid) in pid_adjustments:
-	Log "  Changing pid from '${pid}' to '${pfid}'..."
+	Log "    Changing pid from '${pid}' to '${pfid}'..."
 	# If any of this fails, it is unclear what to do.
 	Execute via conn:
 		UPDATE ${db}.personforekomst SET pid = $${pfid} WHERE pid = $${pid}
@@ -512,9 +533,104 @@ Execute via conn:
 Execute via conn:
 	SET SESSION foreign_key_checks=ON
 
+Log "  Parsing birth and death dates..."
+
+Execute via conn:
+	SET @@SQL_MODE = CONCAT(@@SQL_MODE, ',NO_ZERO_DATE')
+Execute via conn:
+	CREATE FUNCTION ${db}.tmp_dato(inp VARCHAR(50))
+	RETURNS DATE
+	DETERMINISTIC
+	BEGIN
+		DECLARE d DATE;
+		DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET d = NULL;
+		SET d = STR_TO_DATE(inp, '%d.%m.%Y');
+		RETURN d;
+	END
+Execute via conn:
+	UPDATE ${db}.person SET
+		birthyear = COALESCE(birthyear, YEAR(${db}.tmp_dato(birthdate))),
+		birthmonth = COALESCE(birthmonth, MONTH(${db}.tmp_dato(birthdate))),
+		birthday = COALESCE(birthday, DAYOFMONTH(${db}.tmp_dato(birthdate))),
+		deathyear = COALESCE(deathyear, YEAR(${db}.tmp_dato(deathdate))),
+		deathmonth = COALESCE(deathmonth, MONTH(${db}.tmp_dato(deathdate))),
+		deathday = COALESCE(deathday, DAYOFMONTH(${db}.tmp_dato(deathdate)))
+
+Log "  Parsing birth and death years only (as fallback)..."
+
+Execute via conn:
+	CREATE FUNCTION ${db}.tmp_aar(inp VARCHAR(50))
+	RETURNS INT(4)
+	DETERMINISTIC
+	BEGIN
+		DECLARE y INT(4);
+		DECLARE pos INT DEFAULT 1;
+		DECLARE temp VARCHAR(50);
+		DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET y = NULL;
+		SET y = NULL;
+		WHILE y IS NULL AND pos <= LENGTH(inp) - 3 DO
+			SET temp = SUBSTRING(inp, pos, 4);
+			IF temp REGEXP '^[0-9]{4}$'
+			AND (pos = 1 OR SUBSTRING(inp, pos - 1, 1) NOT REGEXP '[0-9]')
+			AND (pos + 4 > LENGTH(inp) OR SUBSTRING(inp, pos + 4, 1) NOT REGEXP '[0-9]') THEN
+				SET y = CAST(temp AS UNSIGNED);
+			END IF;
+			SET pos = pos + 1;
+		END WHILE;
+		RETURN y;
+	END
+Execute via conn:
+	UPDATE ${db}.person SET birthyear = ${db}.tmp_aar(birthdate) WHERE birthyear IS NULL
+Execute via conn:
+	UPDATE ${db}.person SET deathyear = ${db}.tmp_aar(deathdate) WHERE deathyear IS NULL
+
+Execute via conn:
+	DROP FUNCTION ${db}.tmp_aar
+Execute via conn:
+	DROP FUNCTION ${db}.tmp_dato
+
+Log "  Setting birthplace_kommnr and deathplace_kommnr..."
+
+Execute via conn:
+	CREATE INDEX tmp_navn_IDX USING BTREE ON ${db}.ref_kommuneenheter_alle (navn)
+
+Execute via conn:
+	UPDATE ${db}.person p
+	INNER JOIN ${db}.ref_kommuneenheter_alle rka
+	   ON rka.navn = REGEXP_REPLACE(birthplace, '(,.+| (herr?ed|kjøpstad)\\*?)$', '')
+	  AND rka.startaar <= COALESCE(p.birthyear, p.deathyear)
+	  AND rka.sluttaar <= COALESCE(p.birthyear, p.deathyear)
+	SET birthplace_kommnr = rka.kommnr
+	WHERE p.birthplace_kommnr IS NULL
+
+Execute via conn:
+	UPDATE ${db}.person p
+	INNER JOIN ${db}.ref_kommuneenheter_alle rka
+	   ON rka.navn = REGEXP_REPLACE(deathplace, '(,.+| (herr?ed|kjøpstad)\\*?)$', '')
+	  AND rka.startaar <= COALESCE(p.birthyear, p.deathyear)
+	  AND rka.sluttaar <= COALESCE(p.birthyear, p.deathyear)
+	SET deathplace_kommnr = rka.kommnr
+	WHERE p.deathplace_kommnr IS NULL
+
+Execute via conn:
+	ALTER TABLE ${db}.ref_kommuneenheter_alle DROP INDEX tmp_navn_IDX
+
+Log "  Creating view person_kommune..."
+
+Execute via conn:
+	CREATE VIEW ${db}.person_kommune AS
+	SELECT p.pid, rka.kommnr, rka.startaar
+	FROM ${db}.person p
+	INNER JOIN ${db}.ref_kommuneenheter_alle rka
+	ON rka.kommnr = COALESCE(p.birthplace_kommnr, p.deathplace_kommnr)
+	AND rka.startaar <= COALESCE(p.birthyear, p.deathyear)
+	AND rka.sluttaar >= COALESCE(p.birthyear, p.deathyear)
+
 ####
 
-Log "Checking and adjusting family relation terms..."
+Log "Cleaning up family relations..."
+
+Log "  Checking and adjusting family relation terms..."
 
 Execute via conn:
 	RENAME TABLE ${db}.family_relation TO ${db}.familierelasjonstype
@@ -550,9 +666,7 @@ For (id, relation) in adjusted_familierelasjonstyper:
 		SET relation = $${relation}
 		WHERE id = $${id.as_integer}
 
-####
-
-Log "Cleaning up family relations..."
+Log "  Replacing table 'family_links' with new table 'familierelasjon'..."
 
 Execute via conn:
 	CREATE TABLE ${db}.familierelasjon AS
@@ -597,7 +711,7 @@ Execute via conn:
 
 ####
 
-Log "Drop other tables (for now)..."
+Log "Dropping other tables (for now)..."
 
 Execute via conn:
 	DROP TABLE IF EXISTS ${db}.family_links
@@ -614,37 +728,31 @@ Execute via conn:
 Execute via conn:
 	DROP TABLE IF EXISTS ${db}.fob_kilde
 
-Set tables_to_keep:
-	personforekomst
-	person
-	familierelasjon
-	familierelasjonstype
-	personforekomst_kommune
-	ref_kommuneenheter_alle
-	ref_fylker
-	ref_regioner
-	kommunenummer
-
-Set unexpected_tables = result via conn:
-	SELECT TABLE_NAME
-	FROM information_schema.TABLES
-	WHERE TABLE_SCHEMA = $${db}
-	  AND 0 = find_in_set(TABLE_NAME, replace($${tables_to_keep}, '\n', ','))
-	ORDER BY TABLE_NAME
-
-Assert unexpected_tables.size == 0
-
 ####
 
 Set build = "${root}/build"
 Set siard = "${build}/${db}.siard"
 
-Log "Produce '${siard}'... (This may take a while.)"
+Log "Specifying metadata and producing '${siard}'..."
+Log "  (This will take a while...)"
+
+Metadata for conn:
+	# We would have liked to write ${db} here as well, but this is not possible with the current DbSpec grammar.
+	Schema ohbr:
+		Table personforekomst - Forekomst av en personreferanse
+		Table person - Kanonisk representant for personforekomster som er antatt å gjelde samme person
+		Table familierelasjon - ...
+		Table personforekomst_kommune
+		Table ref_kommuneenheter_alle
+		Table ref_fylker
+		Table ref_regioner
+		Table kommunenummer
+		View person_kommune - Forsøk på å knytte personer til den kommunen de er født
 
 Execute using "/usr/bin/env bash":
 	mkdir -p "${build}"
 
-Output conn to "${siard}"
+Output conn to siard
 
 ####
 
