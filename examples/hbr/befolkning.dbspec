@@ -1,5 +1,22 @@
 #!/usr/bin/env dbspec
 
+# This example shows how DbSpec was used to preserve parts of the database
+# used by Historisk befolkningsregister (https://histreg.no/) as a test in
+# 2025. This led to several improvements of the DbSpec interpreter and
+# language specification as well as a list of issues that should be
+# addressed in the future. A few things should be noted, however:
+#
+# 1. Even though the data can be accessed freely online, the full database
+# dump is not available; which means that others will not be able to
+# execute this specification.
+#
+# 2. Since our focus was on testing DbSpec rather than the preservation
+# needs of the data owner, the curation and transformations are somewhat
+# random. To do the job properly would require more resources and the
+# involvement of more stakeholders.
+#
+# 3. The embedded scripts (mosly SQL) may not adhere to all best practices.
+
 Parameters:
 	dump_tgz - Path to the HBR database dump
 	host - Hostname of MariaDB instance used for the staging database
