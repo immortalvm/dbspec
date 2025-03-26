@@ -1,0 +1,19 @@
+# Expected exit status code: OK
+
+Parameters:
+	url
+	user
+	password
+
+Set conn = connection to url with:
+	user = user
+	password = password
+
+Set u = result via conn:
+	SELECT NULL
+Set v = result via conn:
+	SELECT NULL
+
+# Observe that since this breaks with SQL semantics of NULL.
+Assert u == u
+Assert u == v

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S docker build . --output=dist --file
 
-FROM nr/dbspec-ex:1.2 AS build
+FROM nr/dbspec-ex:1.3 AS build
 
 RUN wget https://www.postgresqltutorial.com/wp-content/uploads/2019/05/dvdrental.zip
 RUN unzip dvdrental.zip

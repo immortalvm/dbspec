@@ -1,4 +1,4 @@
-#!/usr/bin/env -S docker build . --tag=nr/dbspec:1.2 --secret id=GITHUB_ACTOR --secret id=GITHUB_TOKEN --file
+#!/usr/bin/env -S docker build . --tag=nr/dbspec:1.3 --secret id=GITHUB_ACTOR --secret id=GITHUB_TOKEN --file
 # Cf. https://stackoverflow.com/a/74532086
 
 FROM docker.io/library/ubuntu:22.04 AS build

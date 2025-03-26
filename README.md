@@ -47,3 +47,7 @@ The parser submodule is made available under the MIT license.
 The DbSpec source code also contains fragments of
 [java-tree-sitter](https://github.com/serenadeai/java-tree-sitter),
 which uses the MIT license.
+
+## Release Notes
+
+See the `release-notes` directory.

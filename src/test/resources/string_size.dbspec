@@ -1,0 +1,8 @@
+# Expected exit status code: SEMANTIC_ERROR
+
+Set x:
+	abc
+	def
+
+# We might count the number of rows in x, but would often be misleading.
+Assert x.size == 2

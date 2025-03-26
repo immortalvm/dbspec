@@ -1,6 +1,6 @@
-#!/usr/bin/env -S docker build . --tag=nr/dbspec-ex:1.2 --file
+#!/usr/bin/env -S docker build . --tag=nr/dbspec-ex:1.3 --file
 
-FROM nr/dbspec:1.2
+FROM nr/dbspec:1.3
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=Etc/UTC
