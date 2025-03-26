@@ -63,6 +63,12 @@ public class SiardMetadataAdjusterImpl implements SiardMetadataAdjuster {
                 throw new SiardException(e.getMessage());
             }
         }
+        // SiardApi refuses to change this field:
+        // try {
+        //     md.setProducerApplication("DbSpec in combination with: " + md.getProducerApplication());
+        // } catch (IOException e) {
+        //     throw new SiardException(e.getMessage());
+        // }
         if (x != null) md.setDbName(x);
         if (null != (x = getInfoField(mdo, "description"))) md.setDescription(x);
         if (null != (x = getInfoField(mdo, "archiver"))) md.setArchiver(x);
