@@ -1,7 +1,8 @@
 # DbSpec interpreter
 
-An interpreter for the DbSpec language.
-
+An interpreter for the DbSpec language, cf.
+the [language reference](doc/DbSpec%20language%20reference.docx) (.docx)
+and the corresponding [Tree-sitter grammar](https://github.com/immortalvm/tree-sitter-dbspec).
 
 ## Building and running
 
