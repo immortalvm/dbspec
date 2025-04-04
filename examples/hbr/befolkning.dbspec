@@ -747,6 +747,10 @@ Execute via conn:
 
 ####
 
+# TODO: Add final staging database assertions.
+
+####
+
 Set build = "${root}/build"
 Set siard = "${build}/${db}.siard"
 
@@ -770,6 +774,11 @@ Execute using "/usr/bin/env bash":
 	mkdir -p "${build}"
 
 Output conn to siard
+
+####
+
+# TODO: Package this script, the SIARD file and other metadata in an
+# information package.
 
 ####
 
