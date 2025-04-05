@@ -10,6 +10,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -28,24 +29,25 @@ public class ScriptRunnerImpl implements ScriptRunner {
         String result;
         try {
             // Create script and make it executable
-            File tempFile = File.createTempFile("script-", "");
+            // The suffix .ps1 for non-posix systems is a hack since PowerShell only accepts this suffix.
+            File tempFile = File.createTempFile("script-", isPosix ? "" : ".ps1");
             tempFile.deleteOnExit();
             FileOutputStream fos = new FileOutputStream(tempFile);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
-            if (ScriptRunnerImpl.isPosix) {
-                bos.write(ScriptRunnerImpl.EXEC_MARKER.getBytes());
+            if (isPosix) {
+                bos.write(EXEC_MARKER.getBytes());
                 bos.write(interpreter.getBytes());
                 bos.write(10); // LF
             }
             bos.write(script.getBytes());
             bos.close();
             fos.close();
-            if (ScriptRunnerImpl.isPosix) {
+            if (isPosix) {
                 Files.setPosixFilePermissions(tempFile.toPath(), PosixFilePermissions.fromString("rwx------"));
             }
             List<String> cmd = new LinkedList<>();
-            if (!ScriptRunnerImpl.isPosix) {
-                cmd.add(interpreter);
+            if (!isPosix) {
+                cmd.addAll(Arrays.asList(interpreter.split(" ")));
             }
             cmd.add(tempFile.getAbsolutePath());
 

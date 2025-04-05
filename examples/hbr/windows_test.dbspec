@@ -1,0 +1,41 @@
+# The idea with this file was to "port" befolkning.dbspec to Windows +
+# PowerShell and verify that we get the same result, but so far we have
+# only had time to check that we are able to use PowerShell in embedded
+# scripts and connect to a MariaDB instance running in a WSL instance.
+
+Parameters:
+	host - Hostname of MariaDB instance used for the staging database
+	port - Port of MariaDB instance
+	user
+	password
+
+# Here -f is optional. We include it to show that we split the interpreter
+# string at spaces (on non-Posix systems). Quoting is not (yet) supported.
+# Hence, it is not possible to use an interpreter with spaces in the path.
+Set root = result using "pwsh.exe -f":
+	(Get-Location).Path
+
+Log "Current directory (according to Powershell 7): ${root}"
+
+Set db = "ohbr"
+
+Log "Establishing connection to staging database '${db}'..."
+
+Set conn = connection to "jdbc:mysql://${host}:${port}/${db}" with:
+	user = "${user}"
+	password = "${password}"
+	serverTimezone = "Europe/Paris"
+
+Set table_sizes = result via conn:
+	SELECT t.TABLE_NAME, t.TABLE_ROWS
+	FROM information_schema.TABLES t
+	WHERE t.TABLE_SCHEMA = $${db}
+	AND t.TABLE_ROWS IS NOT NULL
+	ORDER BY t.TABLE_NAME
+
+Log "Staging tables: "
+
+For (table, rows) in table_sizes:
+	Log "  ${table} (~ ${rows} rows)"
+
+Log "Done"
