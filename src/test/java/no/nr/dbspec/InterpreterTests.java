@@ -29,7 +29,8 @@ public class InterpreterTests {
     private static final Pattern statusCodePattern = Pattern.compile("^# Expected exit status code: ([A-Z_]+)$");
     private static final PathMatcher dbspecMatcher = FileSystems.getDefault().getPathMatcher("glob:*.dbspec");
     private static final String logTestFilename = "Log.dbspec";
-    private static final Set<String> handledSeparately = Set.of(logTestFilename);
+    private static final String errorLogTestFilename = "ErrorLog.dbspec";
+    private static final Set<String> handledSeparately = Set.of(logTestFilename, errorLogTestFilename);
 
     private static final Path dir;
     private static final Properties properties;
@@ -132,6 +133,27 @@ public class InterpreterTests {
                     outContent.toString().lines());
         } finally {
             System.setOut(originalOut);
+        }
+    }
+
+    @Test
+    void test_error_log() throws Exception {
+        PrintStream originalErr = System.err;
+        try {
+            ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+            System.setErr(new PrintStream(errContent, true));
+            test_dbspec_files(errorLogTestFilename);
+            String prefixReg = "\\[[0-2][0-9]:[0-5][0-9]\\] ERROR: ";
+            assertLinesMatch(
+                    Stream.of(
+                                "SQL error - Wrong user name or password \\[28000-224\\]",
+                                " 8 \\| Set conn = connection to url with:",
+                                " 9 \\| 	user = user",
+                                "10 \\| 	password = \"wrong password\"")
+                            .map(line -> prefixReg + line + "$"),
+                    errContent.toString().lines());
+        } finally {
+            System.setOut(originalErr);
         }
     }
 }

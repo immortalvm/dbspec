@@ -69,9 +69,18 @@ public class Interpreter {
     }
 
     void logNodeLines(TSNode n) {
-        int end = n.getEndPoint().getRow();
+        TSPoint endPoint = n.getEndPoint();
+        int end = endPoint.getRow();
+        if (endPoint.getColumn() == 0) {
+            end--;
+        }
+        while (end > 0 && sourceLines[end].isBlank()) {
+            end--;
+        }
+        int w = 1 + (int)Math.log10(1 + end);
+        String message = "%" + w + "d | %s";
         for (int i = n.getStartPoint().getRow(); i <= end; i++) {
-            log.error("%d:\t%s", i + 1, sourceLines[i].stripTrailing());
+            log.error(message, i + 1, sourceLines[i].stripTrailing());
         }
     }
 

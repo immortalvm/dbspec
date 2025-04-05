@@ -1,0 +1,12 @@
+# Expected exit status code: SQL_ERROR
+
+Parameters:
+	url
+	user
+
+# This will fail and trigger error message:
+Set conn = connection to url with:
+	user = user
+	password = "wrong password"
+
+Log "Unreachable"

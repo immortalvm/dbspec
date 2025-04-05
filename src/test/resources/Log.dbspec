@@ -2,15 +2,6 @@
 #
 # For this test file, the assertions are written in Java.
 
-Parameters:
-	url
-	user
-	password
-
-Set conn = connection to url with:
-	user = user
-	password = password
-
 Log "This is logged"
 Log 17
 
