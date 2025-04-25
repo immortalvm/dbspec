@@ -120,6 +120,7 @@ Set table_sizes = result via conn:
 	FROM information_schema.TABLES t
 	WHERE t.TABLE_SCHEMA = $${db}
 	AND t.TABLE_NAME LIKE 'deleted\_%'
+	AND t.TABLE_TYPE = 'BASE TABLE'
 
 # NB. information_schema.TABLES.TABLE_ROWS is only an estimate.
 
@@ -144,6 +145,7 @@ Set tables = result via conn:
 		0 < find_in_set(t.TABLE_NAME, replace($${presumed_empty}, '\n', ',')) AS pe
 	FROM information_schema.TABLES t
 	WHERE t.TABLE_SCHEMA = $${db}
+	AND t.TABLE_TYPE = 'BASE TABLE'
 	ORDER BY t.TABLE_NAME
 
 For (table, pe) in tables:
@@ -168,7 +170,9 @@ Execute via conn:
 
 Log "  Updating default collation..."
 
-# Will this be reflected in the .siard?
+# NB. The SIARD format does not mention collation, but normalizing this
+# may simplify transformations.
+
 Execute via conn:
 	ALTER DATABASE ${db}
 	COLLATE = 'utf8mb4_danish_ci';
@@ -187,6 +191,7 @@ Set tables = result via conn:
 	SELECT t.TABLE_NAME
 	FROM information_schema.TABLES t
 	WHERE t.TABLE_SCHEMA = $${db}
+	AND t.TABLE_TYPE = 'BASE TABLE'
 	ORDER BY t.TABLE_NAME
 
 For (table) in tables:
