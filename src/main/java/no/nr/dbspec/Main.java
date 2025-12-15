@@ -101,7 +101,7 @@ public class Main {
                 cmd.hasOption(existingSiardOpt),
                 dbms,
                 new ScriptRunnerImpl(timingContext),
-                new SiardExtractorImpl(dbms, log, dir),
+                new SiardExtractorImpl(dbms, log, dir, timingContext),
                 new SiardMetadataAdjusterImpl(log),
                 new RoaeProducerImpl(),
                 timingContext);
