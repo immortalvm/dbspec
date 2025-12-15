@@ -14,13 +14,10 @@ import java.util.Properties;
 
 public class Dbms {
     Map<Connection,Properties> connectionParameters;
-    private TimingContext timingContext;
+    private final TimingContext timingContext;
 
-    public Dbms() {
+    public Dbms(TimingContext timingContext) {
         connectionParameters = new HashMap<Connection,Properties>();
-    }
-
-    public void setTimingContext(TimingContext timingContext) {
         this.timingContext = timingContext;
     }
 

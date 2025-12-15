@@ -93,9 +93,8 @@ public class Main {
             return StatusCode.CONFIG_FILE_UNREADABLE;
         }
 
-        Dbms dbms = new Dbms();
         TimingContext timingContext = new TimingContext(cmd.hasOption(timeOpt));
-        dbms.setTimingContext(timingContext);
+        Dbms dbms = new Dbms(timingContext);
         Interpreter i = new Interpreter(log,
                 dir,
                 config,

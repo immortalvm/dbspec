@@ -101,17 +101,18 @@ public class InterpreterTests {
         assertTrue(m.matches(), "Missing expected exit status");
         StatusCode expectedStatus = StatusCode.valueOf(m.toMatchResult().group(1));
 
+        TimingContext timingContext = new TimingContext(false);
         Interpreter i = new Interpreter(
                 log,
                 dir,
                 properties,
                 false,
-                new Dbms(),
+                new Dbms(timingContext),
                 scriptRunner,
                 extractor,
                 adjuster,
                 roaeProducer,
-                new TimingContext(false));
+                timingContext);
         StatusCode code = i.interpret(path);
         assertEquals(expectedStatus, code);
     }
