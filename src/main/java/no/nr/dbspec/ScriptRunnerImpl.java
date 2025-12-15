@@ -74,7 +74,6 @@ public class ScriptRunnerImpl implements ScriptRunner {
                 timingContext.addShellTime(System.nanoTime() - startTime);
             }
         }
-        }
         return Utils.stripFinalNewline(result);
     }
 }
