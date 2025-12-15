@@ -110,7 +110,8 @@ public class InterpreterTests {
                 scriptRunner,
                 extractor,
                 adjuster,
-                roaeProducer);
+                roaeProducer,
+                new TimingContext(false));
         StatusCode code = i.interpret(path);
         assertEquals(expectedStatus, code);
     }

@@ -14,9 +14,14 @@ import java.util.Properties;
 
 public class Dbms {
     Map<Connection,Properties> connectionParameters;
+    private TimingContext timingContext;
 
     public Dbms() {
         connectionParameters = new HashMap<Connection,Properties>();
+    }
+
+    public void setTimingContext(TimingContext timingContext) {
+        this.timingContext = timingContext;
     }
 
     public Connection connect(String url, NormalContext ctx) throws SQLException {
@@ -28,11 +33,25 @@ public class Dbms {
     }
 
     public int executeSqlUpdate(Connection connection, Map.Entry<String, List<Object>> pair) throws SQLException {
-        return getPreparedStatement(connection, pair).executeUpdate();
+        long startTime = System.nanoTime();
+        try {
+            return getPreparedStatement(connection, pair).executeUpdate();
+        } finally {
+            if (timingContext != null) {
+                timingContext.addSqlTime(System.nanoTime() - startTime);
+            }
+        }
     }
 
     public ResultSet executeSqlQuery(Connection connection, Map.Entry<String, List<Object>> pair) throws SQLException {
-        return getPreparedStatement(connection, pair).executeQuery();
+        long startTime = System.nanoTime();
+        try {
+            return getPreparedStatement(connection, pair).executeQuery();
+        } finally {
+            if (timingContext != null) {
+                timingContext.addSqlTime(System.nanoTime() - startTime);
+            }
+        }
     }
 
     private static PreparedStatement getPreparedStatement(

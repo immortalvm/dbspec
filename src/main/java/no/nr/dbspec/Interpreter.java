@@ -39,6 +39,7 @@ public class Interpreter {
     private final SiardExtractor siardExtractor;
     private final SiardMetadataAdjuster siardMetadataAdjuster;
     private final RoaeProducer roaeProducer;
+    private final TimingContext timingContext;
 
     private String[] sourceLines;
     private String[] lineEndings;
@@ -53,7 +54,8 @@ public class Interpreter {
             ScriptRunner scriptRunner,
             SiardExtractor siardExtractor,
             SiardMetadataAdjuster siardMetadataAdjuster,
-            RoaeProducer roaeProducer) {
+            RoaeProducer roaeProducer,
+            TimingContext timingContext) {
         this.context = new NormalContext();
         this.siardMd = new HashMap<>();
         this.commandMds = new HashMap<>();
@@ -66,6 +68,7 @@ public class Interpreter {
         this.siardExtractor = siardExtractor;
         this.siardMetadataAdjuster = siardMetadataAdjuster;
         this.roaeProducer = roaeProducer;
+        this.timingContext = timingContext;
     }
 
     void logNodeLines(TSNode n) {
