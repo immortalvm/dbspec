@@ -16,16 +16,22 @@ import java.util.List;
 
 public class ScriptRunnerImpl implements ScriptRunner {
     private static final String EXEC_MARKER = "#!";
+    private final TimingContext timingContext;
 
     // From https://stackoverflow.com/a/21541615
     private static final boolean isPosix =
             FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
+
+    public ScriptRunnerImpl(TimingContext timingContext) {
+        this.timingContext = timingContext;
+    }
 
     /**
      * NB. Strips (at most one) final \r?\n from the output.
      */
     @Override
     public String execute(TSNode n, String interpreter, String script, Path dir) {
+        long startTime = System.nanoTime();
         String result;
         try {
             // Create script and make it executable
@@ -63,6 +69,10 @@ public class ScriptRunnerImpl implements ScriptRunner {
             throw new ScriptError(n, e.getMessage());
         } catch (InterruptedException e) {
             throw new ScriptError(n, "Interrupted");
+        } finally {
+            if (timingContext != null) {
+                timingContext.addShellTime(System.nanoTime() - startTime);
+            }
         }
         return Utils.stripFinalNewline(result);
     }

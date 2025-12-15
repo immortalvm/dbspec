@@ -15,11 +15,13 @@ public class SiardExtractorImpl implements SiardExtractor {
     private final Dbms dbms;
     private final Log log;
     private final Path dir;
+    private final TimingContext timingContext;
 
-    public SiardExtractorImpl(Dbms dbms, Log log, Path dir) {
+    public SiardExtractorImpl(Dbms dbms, Log log, Path dir, TimingContext timingContext) {
         this.dbms = dbms;
         this.log = log;
         this.dir = dir;
+        this.timingContext = timingContext;
     }
 
     private List<String> fileProperty(String property, String resourceName) throws URISyntaxException {
@@ -37,6 +39,7 @@ public class SiardExtractorImpl implements SiardExtractor {
     @Override
     public void transfer(Connection conn, Path path) throws SiardException {
         log.verbose("Creating/replacing %s...", path);
+        long startTime = System.nanoTime();
         try {
             String jdbcUrl = conn.getMetaData().getURL();
             String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
@@ -100,6 +103,10 @@ public class SiardExtractorImpl implements SiardExtractor {
         } catch(Exception e) {
             log.maybePrintStackTrace(e);
             throw new SiardException(e);
+        } finally {
+            if (timingContext != null) {
+                timingContext.addSiardTime(System.nanoTime() - startTime);
+            }
         }
     }
 }

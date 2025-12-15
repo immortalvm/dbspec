@@ -30,13 +30,17 @@ public class Main {
     private static final Option existingSiardOpt = new Option(
             null, "use-existing-SIARD", false,
             "Suppress .siard extraction, using existing file(s) instead.");
+    private static final Option timeOpt = new Option(
+            "t", "time", false,
+            "Print timing information to stderr at the end of execution.");
     private static final Options options = new Options()
             .addOption(verboseOpt)
             .addOption(debugOpt)
             .addOption(quietOpt)
             .addOption(dirOpt)
             .addOption(configOpt)
-            .addOption(existingSiardOpt);
+            .addOption(existingSiardOpt)
+            .addOption(timeOpt);
 
     public static void main(String[] args) {
         System.exit(run(args).getValue());
@@ -89,18 +93,21 @@ public class Main {
             return StatusCode.CONFIG_FILE_UNREADABLE;
         }
 
-        Dbms dbms = new Dbms();
+        TimingContext timingContext = new TimingContext(cmd.hasOption(timeOpt));
+        Dbms dbms = new Dbms(timingContext);
         Interpreter i = new Interpreter(log,
                 dir,
                 config,
                 cmd.hasOption(existingSiardOpt),
                 dbms,
-                new ScriptRunnerImpl(),
-                new SiardExtractorImpl(dbms, log, dir),
+                new ScriptRunnerImpl(timingContext),
+                new SiardExtractorImpl(dbms, log, dir, timingContext),
                 new SiardMetadataAdjusterImpl(log),
                 new RoaeProducerImpl());
 
-        return i.interpret(file);
+        StatusCode result = i.interpret(file);
+        timingContext.printReport();
+        return result;
     }
 
     public static final String DEFAULT_CONFIG_FILENAME = "dbspec.conf";
