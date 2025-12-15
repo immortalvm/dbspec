@@ -38,73 +38,71 @@ public class SiardExtractorImpl implements SiardExtractor {
 
     @Override
     public void transfer(Connection conn, Path path) throws SiardException {
+        log.verbose("Creating/replacing %s...", path);
         long startTime = System.nanoTime();
         try {
-            log.verbose("Creating/replacing %s...", path);
-            try {
-                String jdbcUrl = conn.getMetaData().getURL();
-                String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
-                String dbPassword = dbms.connectionParameters.get(conn).getProperty("password");
-                List<String> cmd = new ArrayList<String>();
+            String jdbcUrl = conn.getMetaData().getURL();
+            String dbUser = dbms.connectionParameters.get(conn).getProperty("user");
+            String dbPassword = dbms.connectionParameters.get(conn).getProperty("password");
+            List<String> cmd = new ArrayList<String>();
 
-                // https://stackoverflow.com/a/61860951
-                cmd.add(ProcessHandle.current().info().command().orElseThrow());
-                cmd.add("-cp");
-                cmd.add(System.getProperty("java.class.path"));
+            // https://stackoverflow.com/a/61860951
+            cmd.add(ProcessHandle.current().info().command().orElseThrow());
+            cmd.add("-cp");
+            cmd.add(System.getProperty("java.class.path"));
 
-                // Compatibility with JAVA 17 and later, cf. https://github.com/keeps/dbptk-developer
-                cmd.add("--add-opens"); cmd.add("java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED");
-                cmd.add("--add-opens"); cmd.add("java.xml/com.sun.org.apache.xalan.internal.xsltc.trax=ALL-UNNAMED");
-                cmd.add("-Dfile.encoding=UTF-8");
+            // Compatibility with JAVA 17 and later, cf. https://github.com/keeps/dbptk-developer
+            cmd.add("--add-opens"); cmd.add("java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED");
+            cmd.add("--add-opens"); cmd.add("java.xml/com.sun.org.apache.xalan.internal.xsltc.trax=ALL-UNNAMED");
+            cmd.add("-Dfile.encoding=UTF-8");
 
-                // SiardCmd config files
-                cmd.addAll(fileProperty(SIARD_CMD_DRIVERS_PROPERTY, "/etc/jdbcdrivers.properties"));
-                cmd.addAll(fileProperty(SIARD_CMD_LOG_PROPERTY, "/etc/logging.properties"));
+            // SiardCmd config files
+            cmd.addAll(fileProperty(SIARD_CMD_DRIVERS_PROPERTY, "/etc/jdbcdrivers.properties"));
+            cmd.addAll(fileProperty(SIARD_CMD_LOG_PROPERTY, "/etc/logging.properties"));
 
-                cmd.add(SiardFromDb.class.getCanonicalName()); // Main class
+            cmd.add(SiardFromDb.class.getCanonicalName()); // Main class
 
-                // SiardFromDb options
-                cmd.add("-o");
-                cmd.add(String.format("-j=%s", jdbcUrl));
-                cmd.add(String.format("-u=%s", dbUser));
-                cmd.add(String.format("-p=%s", dbPassword));
-                cmd.add(String.format("-s=%s", path.toFile().getCanonicalPath()));
-                log.debug("SIARD command: %s", (Supplier<String>) () -> String.join(" ", cmd));
+            // SiardFromDb options
+            cmd.add("-o");
+            cmd.add(String.format("-j=%s", jdbcUrl));
+            cmd.add(String.format("-u=%s", dbUser));
+            cmd.add(String.format("-p=%s", dbPassword));
+            cmd.add(String.format("-s=%s", path.toFile().getCanonicalPath()));
+            log.debug("SIARD command: %s", (Supplier<String>) () -> String.join(" ", cmd));
 
-                ProcessBuilder pb = new ProcessBuilder(cmd)
-                        .redirectErrorStream(true)
-                        .directory(dir.toFile());
-                boolean showOutput = log.getLevel() >= Log.DEBUG;
-                if (showOutput) {
-                    log.debug("Output from SIARD command:");
-                    pb.inheritIO();
-                    // TODO: Ideally, we should also redirect standard output from this process to standard error (where
-                    // we do the other debug logging) but that may not be worth the effort.
-                }
-                Process p = pb.start();
-                String output = new String(p.getInputStream().readAllBytes());
-                if (showOutput) {
-                    log.newline();
-                }
-                p.waitFor();
-                if (p.exitValue() != 0) {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Exit value ").append(p.exitValue()).append(".");
-                    if (!showOutput) {
-                        String ls = System.lineSeparator();
-                        String dashes = "-".repeat(72);
-                        sb.append(" Output:").append(ls).append(dashes).append(ls);
-                        sb.append(output);
-                        sb.append(ls).append(dashes);
-                    }
-                    throw new SiardException(sb.toString());
-                }
-            } catch (SiardException e) {
-                throw e;
-            } catch(Exception e) {
-                log.maybePrintStackTrace(e);
-                throw new SiardException(e);
+            ProcessBuilder pb = new ProcessBuilder(cmd)
+                    .redirectErrorStream(true)
+                    .directory(dir.toFile());
+            boolean showOutput = log.getLevel() >= Log.DEBUG;
+            if (showOutput) {
+                log.debug("Output from SIARD command:");
+                pb.inheritIO();
+                // TODO: Ideally, we should also redirect standard output from this process to standard error (where
+                // we do the other debug logging) but that may not be worth the effort.
             }
+            Process p = pb.start();
+            String output = new String(p.getInputStream().readAllBytes());
+            if (showOutput) {
+                log.newline();
+            }
+            p.waitFor();
+            if (p.exitValue() != 0) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Exit value ").append(p.exitValue()).append(".");
+                if (!showOutput) {
+                    String ls = System.lineSeparator();
+                    String dashes = "-".repeat(72);
+                    sb.append(" Output:").append(ls).append(dashes).append(ls);
+                    sb.append(output);
+                    sb.append(ls).append(dashes);
+                }
+                throw new SiardException(sb.toString());
+            }
+        } catch (SiardException e) {
+            throw e;
+        } catch(Exception e) {
+            log.maybePrintStackTrace(e);
+            throw new SiardException(e);
         } finally {
             if (timingContext != null) {
                 timingContext.addSiardTime(System.nanoTime() - startTime);

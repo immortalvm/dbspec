@@ -103,8 +103,7 @@ public class Main {
                 new ScriptRunnerImpl(timingContext),
                 new SiardExtractorImpl(dbms, log, dir, timingContext),
                 new SiardMetadataAdjusterImpl(log),
-                new RoaeProducerImpl(),
-                timingContext);
+                new RoaeProducerImpl());
 
         StatusCode result = i.interpret(file);
         timingContext.printReport();
