@@ -323,7 +323,7 @@ Execute via conn:
 		SELECT pfid, SUBSTRING_INDEX(rem, ' ', 1) AS kommnr
 		FROM cte
 	)
-	SELECT DISTINCT pfid, CAST(kommnr AS VARCHAR(4))
+	SELECT DISTINCT pfid, CAST(kommnr AS VARCHAR(4)) AS kommnr
 	FROM sub
 	WHERE LENGTH(kommnr) = 4
 
@@ -710,8 +710,6 @@ Execute via conn:
 Execute via conn:
 	ALTER TABLE ${db}.familierelasjon MODIFY COLUMN familierelasjonstype_id INT(2) NOT NULL;
 Execute via conn:
-	ALTER TABLE ${db}.familierelasjon MODIFY COLUMN `timestamp` timestamp NOT NULL;
-Execute via conn:
 	ALTER TABLE ${db}.familierelasjon
 	ADD CONSTRAINT fk_familierelasjon_familierelasjontype
 	FOREIGN KEY (familierelasjonstype_id) REFERENCES familierelasjonstype(id)
@@ -730,6 +728,8 @@ Execute via conn:
 	SET SESSION alter_algorithm='COPY'
 Execute via conn:
 	SET SESSION foreign_key_checks=ON
+Execute via conn:
+	ALTER TABLE ${db}.familierelasjon MODIFY COLUMN `timestamp` timestamp NOT NULL
 
 ####
 
@@ -778,6 +778,9 @@ Metadata for conn:
 Execute using "/usr/bin/env bash":
 	mkdir -p "${build}"
 
+# For this to work with MariaDB 10.11 and SIARD Suite 2.2 we must ignore performance_schema:
+#   [mysqld]
+#   ignore-db-dirs = performance_schema
 Output conn to siard
 
 ####
