@@ -24,15 +24,29 @@ Set build = "${root}/build"
 Log "Download and extract AdventureWorks data to ${build}..."
 
 Execute using "/usr/bin/env bash":
-	set -e
+	set -euo pipefail
+
 	mkdir -p "${build}"
 	rm -rf "${build}/*"
 	git clone https://github.com/lorint/AdventureWorks-for-Postgres.git "${build}"
 	cd "${build}"
 	git reset --hard b37c060
 	rm -rf .git
-	wget https://github.com/Microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks-oltp-install-script.zip
-	unzip AdventureWorks-oltp-install-script.zip
+
+	# This downloads a version which is too new for our ruby update script
+	# wget https://github.com/Microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks-oltp-install-script.zip
+	# unzip AdventureWorks-oltp-install-script.zip
+
+	# New version
+	git clone --filter=blob:none --no-checkout https://github.com/Microsoft/sql-server-samples.git
+	cd sql-server-samples
+	git sparse-checkout init --cone
+	git sparse-checkout set samples/databases/adventure-works/oltp-install-script
+	git checkout 9179a8e43287f3887a838145c115e1eaeb62343a
+	cp -R samples/databases/adventure-works/oltp-install-script/* ..
+	cd ..
+	rm -rf sql-server-samples
+
 
 Log "Adjust CSV files..."
 
