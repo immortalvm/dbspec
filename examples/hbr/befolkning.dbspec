@@ -137,7 +137,6 @@ Set presumed_empty:
 	family_relations
 	mako_migrations
 	person_places
-	statistics
 
 Set tables = result via conn:
 	SELECT
@@ -166,7 +165,8 @@ Execute via conn:
 	DROP TABLE IF EXISTS
 		${db}.celebrities,
 		${db}.examples,
-		${db}.family_links_church
+		${db}.family_links_church,
+		${db}.statistics
 
 Log "  Updating default collation..."
 
